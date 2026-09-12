@@ -595,6 +595,22 @@
         const session = sessionData?.session;
 
         if (session?.user) {
+          let expirationDate = null;
+
+          if (data.expiration) {
+            const mmddyyyy = String(data.expiration).match(
+              /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+            );
+
+            if (mmddyyyy) {
+              const [, month, day, year] = mmddyyyy;
+              expirationDate =
+                `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(String(data.expiration))) {
+              expirationDate = String(data.expiration);
+            }
+          }
+
           const { error: saveError } = await supabaseClient
             .from("operators")
             .upsert({
@@ -602,7 +618,7 @@
               callsign: data.callsign,
               callsign_status: "active",
               license_class: data.service || null,
-              license_expiration: data.expiration || null,
+              license_expiration: expirationDate,
               callsign_verified: true,
               callsign_verified_at: new Date().toISOString(),
               verification_source: data.source || "HamDB / FCC ULS",
@@ -614,7 +630,8 @@
           if (saveError) {
             console.error(saveError);
             callsignStatus.textContent +=
-              " Verification worked, but the callsign could not be saved to your account.";
+              " Verification worked, but the callsign could not be saved to your account: " +
+              saveError.message;
           } else {
             callsignStatus.textContent +=
               " Saved to your operator account.";
