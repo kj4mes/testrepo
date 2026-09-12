@@ -910,7 +910,8 @@
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Import failed for ${state}.`);
+        const detail = data.details ? ` Details: ${data.details}` : "";
+        throw new Error((data.error || `Import failed for ${state}.`) + detail);
       }
 
       total += Number(data.imported || 0);
