@@ -220,6 +220,7 @@
   <nav>
     <a href="#parks">Find Parks</a>
     <a href="#submit-park">Submit Park</a>
+    <a href="#admin-import">Import Parks</a>
     <a href="#activate">Submit Log</a>
     <a href="#my-activations">My Activations</a>
     <a href="#account">Account</a>
@@ -303,6 +304,22 @@
 
     <button id="submitParkButton" style="margin-top:14px;">Submit Park for Review</button>
     <div id="submitParkStatus" style="margin-top:16px;"></div>
+  </div>
+
+</section>
+
+<section class="section" id="admin-import" style="display:none;">
+
+  <h2>Admin: Seed Nationwide Parks</h2>
+
+  <p>
+    Import an initial nationwide set of city parks from USGS PAD-US 4.1.
+    This runs state by state and can take several minutes.
+  </p>
+
+  <div class="search">
+    <button id="startNationwideImportButton">Start Nationwide Import</button>
+    <div id="nationwideImportStatus" style="margin-top:16px;"></div>
   </div>
 
 </section>
@@ -513,6 +530,9 @@
   const submitParkDescription = document.getElementById("submitParkDescription");
   const submitParkButton = document.getElementById("submitParkButton");
   const submitParkStatus = document.getElementById("submitParkStatus");
+  const adminImportSection = document.getElementById("admin-import");
+  const startNationwideImportButton = document.getElementById("startNationwideImportButton");
+  const nationwideImportStatus = document.getElementById("nationwideImportStatus");
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
@@ -859,6 +879,86 @@
 
   submitParkButton.addEventListener("click", submitMissingPark);
 
+  const US_STATES = [
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+    "VA","WA","WV","WI","WY","DC"
+  ];
+
+  async function importPadusState(state) {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    if (!accessToken) {
+      throw new Error("Sign in again before starting the import.");
+    }
+
+    let offset = 0;
+    let total = 0;
+
+    while (true) {
+      const response = await fetch("/api/import-padus", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ state, offset })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Import failed for ${state}.`);
+      }
+
+      total += Number(data.imported || 0);
+
+      if (data.complete || data.next_offset === null) {
+        break;
+      }
+
+      offset = data.next_offset;
+    }
+
+    return total;
+  }
+
+  async function startNationwideImport() {
+    if (!confirm("Start importing the nationwide PAD-US city park seed database?")) {
+      return;
+    }
+
+    startNationwideImportButton.disabled = true;
+
+    let grandTotal = 0;
+    let completedStates = 0;
+
+    try {
+      for (const state of US_STATES) {
+        nationwideImportStatus.textContent =
+          `Importing ${state}... ${completedStates}/${US_STATES.length} states complete. ${grandTotal} park records processed.`;
+
+        const count = await importPadusState(state);
+        grandTotal += count;
+        completedStates += 1;
+      }
+
+      nationwideImportStatus.textContent =
+        `✓ Nationwide seed import finished. ${completedStates} states/jurisdictions processed and ${grandTotal} park records handled.`;
+
+    } catch (error) {
+      console.error(error);
+      nationwideImportStatus.textContent =
+        `Import stopped after ${completedStates} states: ${error.message}`;
+    } finally {
+      startNationwideImportButton.disabled = false;
+    }
+  }
+
+  startNationwideImportButton.addEventListener("click", startNationwideImport);
+
   async function searchActivationParks() {
     const term = activationParkSearch.value.trim();
 
@@ -1194,6 +1294,7 @@
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
       signOutButton.style.display = "none";
+      adminImportSection.style.display = "none";
       return;
     }
 
@@ -1203,9 +1304,11 @@
 
     const { data: operator } = await supabaseClient
       .from("operators")
-      .select("callsign,callsign_verified,license_class,license_expiration")
+      .select("callsign,callsign_verified,license_class,license_expiration,is_admin")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
+
+    adminImportSection.style.display = operator?.is_admin ? "block" : "none";
 
     if (operator?.callsign) {
       accountStatus.textContent =
