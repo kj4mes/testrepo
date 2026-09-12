@@ -1557,6 +1557,10 @@
     You must be signed in with a verified callsign.
   </p>
 
+  <div id="activationRequirement" class="selected-park" style="max-width:750px;margin:18px auto 0;">
+    Sign in with a verified callsign to see your QSO requirement.
+  </div>
+
   <div class="search">
     <h3>1. Choose the park</h3>
 
@@ -1962,6 +1966,7 @@
   const adifPreview = document.getElementById("adifPreview");
   const submitActivationButton = document.getElementById("submitActivationButton");
   const activationSubmitStatus = document.getElementById("activationSubmitStatus");
+  const activationRequirement = document.getElementById("activationRequirement");
   const submitParkName = document.getElementById("submitParkName");
   const submitParkCity = document.getElementById("submitParkCity");
   const submitParkState = document.getElementById("submitParkState");
@@ -2008,6 +2013,35 @@
 
   let selectedActivationPark = null;
   let parsedAdifRecords = [];
+  let currentActivationRequirement = 10;
+  let currentActivationLicenseClass = null;
+
+  function requiredQsosForLicenseClass(licenseClass) {
+    const value = String(licenseClass || "").trim().toUpperCase();
+
+    if (["T", "TECH", "TECHNICIAN"].includes(value)) return 5;
+    if (["G", "GENERAL"].includes(value)) return 10;
+    if (["E", "EXTRA", "AMATEUR EXTRA", "AMATEUR EXTRA CLASS"].includes(value)) return 10;
+
+    return 10;
+  }
+
+  function updateActivationRequirementDisplay(operator) {
+    if (!operator?.callsign_verified) {
+      currentActivationRequirement = 10;
+      currentActivationLicenseClass = null;
+      activationRequirement.textContent =
+        "Sign in with a verified callsign to see your QSO requirement.";
+      return;
+    }
+
+    currentActivationLicenseClass = operator.license_class || "Unknown";
+    currentActivationRequirement =
+      requiredQsosForLicenseClass(currentActivationLicenseClass);
+
+    activationRequirement.textContent =
+      `Verified callsign: ${operator.callsign} • License class: ${currentActivationLicenseClass} • ${currentActivationRequirement} valid QSOs required`;
+  }
   const searchButton = document.getElementById("searchButton");
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
@@ -3161,9 +3195,15 @@
     const stationCall =
       (first.STATION_CALLSIGN || first.OPERATOR || "").toUpperCase();
 
+    const enoughQsos = parsedAdifRecords.length >= currentActivationRequirement;
+
     adifPreview.textContent =
       `Found ${parsedAdifRecords.length} QSO${parsedAdifRecords.length === 1 ? "" : "s"}` +
-      (stationCall ? ` for station ${stationCall}.` : ".");
+      (stationCall ? ` for station ${stationCall}.` : ".") +
+      ` Your account requires ${currentActivationRequirement}. ` +
+      (enoughQsos
+        ? "✓ Requirement met."
+        : `${currentActivationRequirement - parsedAdifRecords.length} more QSO${currentActivationRequirement - parsedAdifRecords.length === 1 ? "" : "s"} needed.`);
   });
 
   async function submitActivationLog() {
@@ -3180,7 +3220,7 @@
 
     const { data: operator, error: operatorError } = await supabaseClient
       .from("operators")
-      .select("id,callsign,callsign_verified")
+      .select("id,callsign,callsign_verified,license_class")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
@@ -3190,6 +3230,8 @@
       return;
     }
 
+    updateActivationRequirementDisplay(operator);
+
     if (!selectedActivationPark) {
       activationSubmitStatus.textContent = "Choose the park you activated.";
       return;
@@ -3197,6 +3239,15 @@
 
     if (!parsedAdifRecords.length) {
       activationSubmitStatus.textContent = "Choose a valid ADIF file.";
+      return;
+    }
+
+    const requiredQsos = requiredQsosForLicenseClass(operator.license_class);
+
+    if (parsedAdifRecords.length < requiredQsos) {
+      const shortBy = requiredQsos - parsedAdifRecords.length;
+      activationSubmitStatus.textContent =
+        `${operator.license_class || "Unknown"} class requires at least ${requiredQsos} valid QSOs. This log has ${parsedAdifRecords.length}; ${shortBy} more needed.`;
       return;
     }
 
@@ -3282,7 +3333,7 @@
     }
 
     activationSubmitStatus.textContent =
-      `✓ Activation submitted for ${selectedActivationPark.name}: ${rows.length} QSO${rows.length === 1 ? "" : "s"} logged under ${operator.callsign}.`;
+      `✓ Activation submitted for ${selectedActivationPark.name}: ${rows.length} QSO${rows.length === 1 ? "" : "s"} logged under ${operator.callsign} (${operator.license_class || "Unknown"} class; ${requiredQsos} required).`;
 
     adifFile.value = "";
     parsedAdifRecords = [];
@@ -3312,7 +3363,7 @@
 
     const { data: activations, error } = await supabaseClient
       .from("activations")
-      .select("id,station_callsign,qso_count,first_qso_at,last_qso_at,created_at,parks(name,city,state)")
+      .select("id,station_callsign,qso_count,license_class_at_activation,required_qso_count,first_qso_at,last_qso_at,created_at,parks(name,city,state)")
       .eq("auth_user_id", session.user.id)
       .order("first_qso_at", { ascending: false, nullsFirst: false });
 
@@ -3352,6 +3403,8 @@
         ${location ? `<p><strong>Location:</strong> ${escapeHTML(location)}</p>` : ""}
         <p><strong>Callsign:</strong> ${escapeHTML(activation.station_callsign)}</p>
         <p><strong>QSOs:</strong> ${escapeHTML(activation.qso_count)}</p>
+        ${activation.license_class_at_activation ? `<p><strong>License class:</strong> ${escapeHTML(activation.license_class_at_activation)}</p>` : ""}
+        ${activation.required_qso_count ? `<p><strong>Requirement:</strong> ${escapeHTML(activation.required_qso_count)} QSOs</p>` : ""}
         <p><strong>Activation:</strong> ${escapeHTML(dateText)}</p>
       `;
 
@@ -3366,6 +3419,7 @@
     const session = data?.session;
 
     if (!session?.user) {
+      updateActivationRequirementDisplay(null);
       accountStatus.textContent = "Not signed in.";
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
@@ -3389,6 +3443,7 @@
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
+    updateActivationRequirementDisplay(operator);
     currentUserIsAdmin = Boolean(operator?.is_admin);
     document.body.classList.toggle("admin-user", currentUserIsAdmin);
 
@@ -3399,7 +3454,7 @@
 
     if (operator?.callsign) {
       accountStatus.textContent =
-        `Signed in as ${session.user.email}. Verified callsign: ${operator.callsign}`;
+        `Signed in as ${session.user.email}. Verified callsign: ${operator.callsign}${operator.license_class ? ` • ${operator.license_class} class` : ""}.`;
     } else {
       accountStatus.textContent =
         `Signed in as ${session.user.email}. Verify your callsign below.`;
