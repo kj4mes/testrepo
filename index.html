@@ -3481,22 +3481,116 @@
   }
 
   function adifDateTime(record) {
-    const date = record.QSO_DATE;
-    const time = (record.TIME_ON || "").padEnd(6, "0").slice(0, 6);
+    const date = String(record.QSO_DATE || "").trim();
+    const rawTime = String(record.TIME_ON || "").trim();
 
-    if (!date || date.length !== 8) return null;
+    if (!/^\d{8}$/.test(date)) return null;
+    if (!/^\d{4}(\d{2})?$/.test(rawTime)) return null;
 
-    const year = date.slice(0, 4);
-    const month = date.slice(4, 6);
-    const day = date.slice(6, 8);
-    const hour = time.slice(0, 2) || "00";
-    const minute = time.slice(2, 4) || "00";
-    const second = time.slice(4, 6) || "00";
+    const time = rawTime.padEnd(6, "0").slice(0, 6);
+    const year = Number(date.slice(0, 4));
+    const month = Number(date.slice(4, 6));
+    const day = Number(date.slice(6, 8));
+    const hour = Number(time.slice(0, 2));
+    const minute = Number(time.slice(2, 4));
+    const second = Number(time.slice(4, 6));
 
-    const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-    const parsed = new Date(iso);
+    if (
+      year < 1900 ||
+      month < 1 || month > 12 ||
+      day < 1 || day > 31 ||
+      hour > 23 ||
+      minute > 59 ||
+      second > 59
+    ) {
+      return null;
+    }
 
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    const parsed = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    if (parsed.getTime() > Date.now() + 5 * 60 * 1000) {
+      return null;
+    }
+
+    return parsed.toISOString();
+  }
+
+  function validContactCallsign(value) {
+    const call = String(value || "").trim().toUpperCase();
+
+    return (
+      /^[A-Z0-9]{3,12}(\/[A-Z0-9]{1,6}){0,2}$/.test(call) &&
+      /[A-Z]/.test(call) &&
+      /[0-9]/.test(call)
+    );
+  }
+
+  function qsoDuplicateKey(record) {
+    return [
+      String(record.CALL || "").trim().toUpperCase(),
+      adifDateTime(record) || "",
+      String(record.BAND || "").trim().toUpperCase(),
+      String(record.FREQ || "").trim(),
+      String(record.SUBMODE || record.MODE || "").trim().toUpperCase()
+    ].join("|");
+  }
+
+  function validateAndDedupeAdif(records) {
+    const valid = [];
+    const invalid = [];
+    const seen = new Set();
+    let duplicates = 0;
+
+    records.forEach((record, index) => {
+      const problems = [];
+      const callsign = String(record.CALL || "").trim().toUpperCase();
+      const dateTime = adifDateTime(record);
+      const frequency =
+        record.FREQ === undefined || record.FREQ === ""
+          ? null
+          : Number(record.FREQ);
+
+      if (!validContactCallsign(callsign)) {
+        problems.push("invalid contacted callsign");
+      }
+
+      if (!dateTime) {
+        problems.push("missing/invalid date or time");
+      }
+
+      if (frequency !== null && (!Number.isFinite(frequency) || frequency <= 0)) {
+        problems.push("invalid frequency");
+      }
+
+      if (problems.length) {
+        invalid.push({
+          row: index + 1,
+          callsign: callsign || "(missing)",
+          problems
+        });
+        return;
+      }
+
+      const key = qsoDuplicateKey(record);
+
+      if (seen.has(key)) {
+        duplicates += 1;
+        return;
+      }
+
+      seen.add(key);
+      valid.push(record);
+    });
+
+    return { valid, invalid, duplicates };
   }
 
   adifFile.addEventListener("change", async () => {
@@ -3507,26 +3601,57 @@
     if (!file) return;
 
     const text = await file.text();
-    parsedAdifRecords = parseAdif(text);
+    const rawRecords = parseAdif(text);
+    const validation = validateAndDedupeAdif(rawRecords);
 
-    if (!parsedAdifRecords.length) {
+    parsedAdifRecords = validation.valid;
+
+    if (!rawRecords.length) {
       adifPreview.textContent = "No QSO records were found in that ADIF file.";
       return;
     }
 
-    const first = parsedAdifRecords[0];
+    const first = rawRecords[0];
     const stationCall =
       (first.STATION_CALLSIGN || first.OPERATOR || "").toUpperCase();
 
-    const enoughQsos = parsedAdifRecords.length >= currentActivationRequirement;
+    const validCount = validation.valid.length;
+    const enoughQsos = validCount >= currentActivationRequirement;
 
-    adifPreview.textContent =
-      `Found ${parsedAdifRecords.length} QSO${parsedAdifRecords.length === 1 ? "" : "s"}` +
-      (stationCall ? ` for station ${stationCall}.` : ".") +
-      ` Your account requires ${currentActivationRequirement}. ` +
+    const parts = [
+      `Found ${rawRecords.length} QSO record${rawRecords.length === 1 ? "" : "s"}.`,
+      `${validCount} unique valid QSO${validCount === 1 ? "" : "s"} remain after validation.`
+    ];
+
+    if (stationCall) {
+      parts.push(`Station: ${stationCall}.`);
+    }
+
+    if (validation.duplicates) {
+      parts.push(
+        `${validation.duplicates} duplicate QSO${validation.duplicates === 1 ? "" : "s"} will not count.`
+      );
+    }
+
+    if (validation.invalid.length) {
+      const sample = validation.invalid
+        .slice(0, 3)
+        .map((item) => `row ${item.row} (${item.callsign}): ${item.problems.join(", ")}`)
+        .join("; ");
+
+      parts.push(
+        `${validation.invalid.length} invalid record${validation.invalid.length === 1 ? "" : "s"} cannot be submitted. ${sample}${validation.invalid.length > 3 ? "…" : ""}`
+      );
+    }
+
+    parts.push(
+      `Your account requires ${currentActivationRequirement} unique valid QSOs. ` +
       (enoughQsos
         ? "✓ Requirement met."
-        : `${currentActivationRequirement - parsedAdifRecords.length} more QSO${currentActivationRequirement - parsedAdifRecords.length === 1 ? "" : "s"} needed.`);
+        : `${currentActivationRequirement - validCount} more needed.`)
+    );
+
+    adifPreview.textContent = parts.join(" ");
   });
 
   async function activationFingerprint(records, operatorCallsign, parkId) {
@@ -3691,8 +3816,13 @@
       requiredQsosForLicenseClass(operator.license_class)
     );
 
+    const duplicatesRemoved = Number(result?.duplicates_removed || 0);
+
     activationSubmitStatus.textContent =
-      `✓ Activation submitted for ${result?.park_name || selectedActivationPark.name}: ${qsoCount} QSO${qsoCount === 1 ? "" : "s"} logged under ${result?.callsign || operator.callsign} (${result?.license_class || operator.license_class} class; ${requiredQsos} required).`;
+      `✓ Activation submitted for ${result?.park_name || selectedActivationPark.name}: ${qsoCount} unique valid QSO${qsoCount === 1 ? "" : "s"} logged under ${result?.callsign || operator.callsign} (${result?.license_class || operator.license_class} class; ${requiredQsos} required).` +
+      (duplicatesRemoved
+        ? ` ${duplicatesRemoved} duplicate QSO${duplicatesRemoved === 1 ? "" : "s"} removed.`
+        : "");
 
     adifFile.value = "";
     parsedAdifRecords = [];
