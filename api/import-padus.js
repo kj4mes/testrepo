@@ -96,6 +96,8 @@ export default async function handler(req, res) {
         "Source_PAID"
       ].join(","),
       returnGeometry: "false",
+      returnCentroid: "true",
+      outSR: "4326",
       resultOffset: String(offset),
       resultRecordCount: "500",
       orderByFields: "OBJECTID ASC",
@@ -132,10 +134,18 @@ export default async function handler(req, res) {
 
         if (!name) return null;
 
+        const centroid = feature.centroid || {};
+        const latitude =
+          Number.isFinite(Number(centroid.y)) ? Number(centroid.y) : null;
+        const longitude =
+          Number.isFinite(Number(centroid.x)) ? Number(centroid.x) : null;
+
         return {
           name,
           city: deriveCity(a),
           state,
+          latitude,
+          longitude,
           park_type: "city park",
           notes: [
             a.Loc_Ds ? `PAD-US designation: ${a.Loc_Ds}` : null,
@@ -181,7 +191,7 @@ export default async function handler(req, res) {
         rpcData = JSON.parse(rpcText);
       } catch {}
 
-      imported = Number(rpcData.inserted || 0);
+      imported = Number(rpcData.affected || 0);
     }
 
     const hasMore =
