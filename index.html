@@ -78,6 +78,70 @@
       margin-bottom: 10px;
     }
 
+    .search {
+      background: white;
+      max-width: 750px;
+      margin: 35px auto 0;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.08);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search input {
+      flex: 1;
+      padding: 14px;
+      font-size: 16px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+    }
+
+    .search button {
+      padding: 14px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #28745f;
+      color: white;
+      cursor: pointer;
+    }
+
+    .search button:hover {
+      background: #1f5f4d;
+    }
+
+    #status {
+      margin-top: 20px;
+      color: #555;
+    }
+
+    #results {
+      display: grid;
+      gap: 15px;
+      margin-top: 25px;
+      text-align: left;
+    }
+
+    .park-result {
+      background: #f8faf9;
+      border-left: 5px solid #28745f;
+      padding: 18px;
+      border-radius: 7px;
+    }
+
+    .park-result h3 {
+      margin: 0 0 7px;
+      color: #173f35;
+    }
+
+    .park-result p {
+      margin: 5px 0;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -94,33 +158,6 @@
 
     .card h3 {
       color: #28745f;
-    }
-
-    .search {
-      background: white;
-      max-width: 750px;
-      margin: 35px auto 0;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 3px 12px rgba(0,0,0,.08);
-    }
-
-    .search input {
-      width: 70%;
-      padding: 14px;
-      font-size: 16px;
-      border: 1px solid #bbb;
-      border-radius: 6px;
-    }
-
-    .search button {
-      padding: 14px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      background: #28745f;
-      color: white;
-      cursor: pointer;
     }
 
     footer {
@@ -140,13 +177,17 @@
         display: none;
       }
 
-      .search input {
+      .search-row {
+        display: block;
+      }
+
+      .search input,
+      .search button {
         width: 100%;
-        margin-bottom: 10px;
       }
 
       .search button {
-        width: 100%;
+        margin-top: 10px;
       }
     }
   </style>
@@ -181,17 +222,26 @@
   <h2>Find Your Next Park</h2>
 
   <p>
-    Search for city and community parks where you can take
-    your station portable.
+    Search by park name, city, state, or ZIP code.
   </p>
 
   <div class="search">
-    <input
-      type="text"
-      placeholder="Enter city, ZIP code, or park name"
-    >
 
-    <button>Search Parks</button>
+    <div class="search-row">
+      <input
+        id="parkSearch"
+        type="text"
+        placeholder="Try Grand Ledge, Jaycee Park, MI, or 48837"
+      >
+
+      <button id="searchButton">
+        Search Parks
+      </button>
+    </div>
+
+    <div id="status"></div>
+    <div id="results"></div>
+
   </div>
 
 </section>
@@ -253,6 +303,216 @@
   <strong>City Park Waves</strong>
   <p>Discover parks. Get on the air. Make contacts.</p>
 </footer>
+
+<script>
+
+  /* ==========================================================
+     SUPABASE SETTINGS
+
+     Your project URL is already filled in.
+
+     ONLY replace the text:
+     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo
+
+     with your Supabase key beginning with:
+     sb_publishable_
+     ========================================================== */
+
+  const SUPABASE_URL =
+    "https://ppxvqtnzncsyttfegdd.supabase.co";
+
+  const SUPABASE_KEY =
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo";
+
+
+  const searchInput =
+    document.getElementById("parkSearch");
+
+  const searchButton =
+    document.getElementById("searchButton");
+
+  const statusBox =
+    document.getElementById("status");
+
+  const resultsBox =
+    document.getElementById("results");
+
+
+  async function searchParks() {
+
+    const searchTerm =
+      searchInput.value.trim();
+
+    if (!searchTerm) {
+      statusBox.textContent =
+        "Enter a park name, city, state, or ZIP code.";
+
+      resultsBox.innerHTML = "";
+      return;
+    }
+
+
+    if (SUPABASE_KEY === "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo") {
+      statusBox.textContent =
+        "Supabase publishable key has not been added yet.";
+
+      return;
+    }
+
+
+    statusBox.textContent =
+      "Searching parks...";
+
+    resultsBox.innerHTML = "";
+
+
+    const filter =
+      `name.ilike.*${searchTerm}*,` +
+      `city.ilike.*${searchTerm}*,` +
+      `state.ilike.*${searchTerm}*,` +
+      `zip_code.ilike.*${searchTerm}*`;
+
+
+    const url =
+      `${SUPABASE_URL}/rest/v1/parks` +
+      `?select=*` +
+      `&is_active=eq.true` +
+      `&or=(${encodeURIComponent(filter)})` +
+      `&order=name.asc`;
+
+
+    try {
+
+      const response =
+        await fetch(url, {
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`
+          }
+        });
+
+
+      if (!response.ok) {
+
+        const errorText =
+          await response.text();
+
+        console.error(errorText);
+
+        statusBox.textContent =
+          "There was a problem searching the park database.";
+
+        return;
+      }
+
+
+      const parks =
+        await response.json();
+
+
+      if (parks.length === 0) {
+
+        statusBox.textContent =
+          "No matching parks found.";
+
+        return;
+      }
+
+
+      statusBox.textContent =
+        `${parks.length} park${parks.length === 1 ? "" : "s"} found.`;
+
+
+      parks.forEach(park => {
+
+        const card =
+          document.createElement("div");
+
+        card.className =
+          "park-result";
+
+
+        const locationParts = [
+          park.city,
+          park.state,
+          park.zip_code
+        ].filter(Boolean);
+
+
+        card.innerHTML = `
+          <h3>${escapeHTML(park.name)}</h3>
+
+          <p>
+            <strong>Location:</strong>
+            ${escapeHTML(locationParts.join(", "))}
+          </p>
+
+          ${
+            park.park_type
+            ? `<p><strong>Type:</strong>
+               ${escapeHTML(park.park_type)}</p>`
+            : ""
+          }
+
+          ${
+            park.notes
+            ? `<p>${escapeHTML(park.notes)}</p>`
+            : ""
+          }
+        `;
+
+
+        resultsBox.appendChild(card);
+
+      });
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      statusBox.textContent =
+        "Unable to connect to the park database.";
+
+    }
+
+  }
+
+
+  function escapeHTML(value) {
+
+    if (value === null ||
+        value === undefined) {
+      return "";
+    }
+
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+
+  searchButton.addEventListener(
+    "click",
+    searchParks
+  );
+
+
+  searchInput.addEventListener(
+    "keydown",
+    function(event) {
+
+      if (event.key === "Enter") {
+        searchParks();
+      }
+
+    }
+  );
+
+</script>
 
 </body>
 </html>
