@@ -127,7 +127,27 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           `).join("") : "<p>No activations have been submitted for this park yet.</p>"}
         </div>
       `;
-\n      const suggestButton = document.getElementById("suggestParkDetailsButton");\n      if (suggestButton) {\n        suggestButton.addEventListener("click", async () => {\n          const status = document.getElementById("suggestParkDetailsStatus");\n          const { data: sessionData } = await supabaseClient.auth.getSession();\n          const session = sessionData?.session;\n          if (!session?.user) { status.textContent = "Sign in before suggesting park details."; return; }\n          const website = document.getElementById("suggestParkWebsite").value.trim();\n          const photo = document.getElementById("suggestParkPhoto").value.trim();\n          const address = document.getElementById("suggestParkAddress").value.trim();\n          const description = document.getElementById("suggestParkDescription").value.trim();\n          if (!website && !photo && !address && !description) { status.textContent = "Add at least one park detail before submitting."; return; }\n          status.textContent = "Submitting suggestion...";\n          const { error: suggestionError } = await supabaseClient.from("park_detail_submissions").insert({ park_id: park.id, submitted_by: session.user.id, website_url: website || null, photo_url: photo || null, address: address || null, description: description || null, status: "pending" });\n          if (suggestionError) { console.error(suggestionError); status.textContent = "Unable to submit suggestion: " + suggestionError.message; return; }\n          status.textContent = "✓ Park detail suggestion submitted for admin review.";\n          suggestButton.disabled = true;\n        });\n      }\n    } catch (error) {
+
+      const suggestButton = document.getElementById("suggestParkDetailsButton");
+      if (suggestButton) {
+        suggestButton.addEventListener("click", async () => {
+          const status = document.getElementById("suggestParkDetailsStatus");
+          const { data: sessionData } = await supabaseClient.auth.getSession();
+          const session = sessionData?.session;
+          if (!session?.user) { status.textContent = "Sign in before suggesting park details."; return; }
+          const website = document.getElementById("suggestParkWebsite").value.trim();
+          const photo = document.getElementById("suggestParkPhoto").value.trim();
+          const address = document.getElementById("suggestParkAddress").value.trim();
+          const description = document.getElementById("suggestParkDescription").value.trim();
+          if (!website && !photo && !address && !description) { status.textContent = "Add at least one park detail before submitting."; return; }
+          status.textContent = "Submitting suggestion...";
+          const { error: suggestionError } = await supabaseClient.from("park_detail_submissions").insert({ park_id: park.id, submitted_by: session.user.id, website_url: website || null, photo_url: photo || null, address: address || null, description: description || null, status: "pending" });
+          if (suggestionError) { console.error(suggestionError); status.textContent = "Unable to submit suggestion: " + suggestionError.message; return; }
+          status.textContent = "✓ Park detail suggestion submitted for admin review.";
+          suggestButton.disabled = true;
+        });
+      }
+    } catch (error) {
       console.error(error);
       parkDetailStatus.textContent = "Unable to load park details.";
     }
@@ -277,7 +297,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const editParkActive = document.getElementById("editParkActive");
   const saveParkChangesButton = document.getElementById("saveParkChangesButton");
   const adminParkEditStatus = document.getElementById("adminParkEditStatus");
-  const refreshQualityReviewButton = document.getElementById("refreshQualityReviewButton");\n  const refreshParkDetailSuggestionsButton = document.getElementById("refreshParkDetailSuggestionsButton");\n  const parkDetailSuggestionsStatus = document.getElementById("parkDetailSuggestionsStatus");\n  const parkDetailSuggestionsResults = document.getElementById("parkDetailSuggestionsResults");
+  const refreshQualityReviewButton = document.getElementById("refreshQualityReviewButton");
+  const refreshParkDetailSuggestionsButton = document.getElementById("refreshParkDetailSuggestionsButton");
+  const parkDetailSuggestionsStatus = document.getElementById("parkDetailSuggestionsStatus");
+  const parkDetailSuggestionsResults = document.getElementById("parkDetailSuggestionsResults");
   const qualityReviewStatus = document.getElementById("qualityReviewStatus");
   const qualityReviewResults = document.getElementById("qualityReviewResults");
   const repairMunicipalitiesButton = document.getElementById("repairMunicipalitiesButton");
@@ -851,7 +874,74 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     adminParkEditor.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function loadParkDetailSuggestions() {\n    parkDetailSuggestionsResults.innerHTML = "";\n    parkDetailSuggestionsStatus.textContent = "Loading pending detail suggestions...";\n\n    const { data, error } = await supabaseClient\n      .from("park_detail_submissions")\n      .select("id,park_id,website_url,photo_url,address,description,created_at,parks(reference_code,name,city,state)")\n      .eq("status", "pending")\n      .order("created_at", { ascending: true });\n\n    if (error) {\n      console.error(error);\n      parkDetailSuggestionsStatus.textContent = "Unable to load detail suggestions: " + error.message;\n      return;\n    }\n\n    if (!data?.length) {\n      parkDetailSuggestionsStatus.textContent = "No pending park detail suggestions.";\n      return;\n    }\n\n    parkDetailSuggestionsStatus.textContent = `${data.length} pending suggestion${data.length === 1 ? "" : "s"}.`;\n\n    data.forEach((submission) => {\n      const park = submission.parks || {};\n      const card = document.createElement("div");\n      card.className = "park-result";\n      card.innerHTML = `\n        <h3>${escapeHTML(park.name || "Park")}</h3>\n        <p><strong>CPW:</strong> ${escapeHTML(park.reference_code || "")}</p>\n        <p><strong>Location:</strong> ${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}</p>\n        ${submission.website_url ? `<p><strong>Website:</strong> ${escapeHTML(submission.website_url)}</p>` : ""}\n        ${submission.photo_url ? `<p><strong>Photo:</strong> ${escapeHTML(submission.photo_url)}</p>` : ""}\n        ${submission.address ? `<p><strong>Address:</strong> ${escapeHTML(submission.address)}</p>` : ""}\n        ${submission.description ? `<p><strong>Description:</strong> ${escapeHTML(submission.description)}</p>` : ""}\n      `;\n\n      const actions = document.createElement("div");\n      actions.style.marginTop = "12px";\n\n      ["approved", "rejected"].forEach((action) => {\n        const button = document.createElement("button");\n        button.textContent = action === "approved" ? "Approve Details" : "Reject";\n        button.style.marginRight = "8px";\n        button.addEventListener("click", async () => {\n          button.disabled = true;\n          const { error: reviewError } = await supabaseClient.rpc("admin_review_park_detail_submission", {\n            p_submission_id: submission.id,\n            p_action: action,\n            p_review_notes: null\n          });\n          if (reviewError) {\n            alert("Review failed: " + reviewError.message);\n            button.disabled = false;\n            return;\n          }\n          await loadParkDetailSuggestions();\n        });\n        actions.appendChild(button);\n      });\n\n      card.appendChild(actions);\n      parkDetailSuggestionsResults.appendChild(card);\n    });\n  }\n\n  refreshParkDetailSuggestionsButton.addEventListener("click", loadParkDetailSuggestions);\n  async function loadQualityReviewParks() {
+  async function loadParkDetailSuggestions() {
+    parkDetailSuggestionsResults.innerHTML = "";
+    parkDetailSuggestionsStatus.textContent = "Loading pending detail suggestions...";
+
+    const { data, error } = await supabaseClient
+      .from("park_detail_submissions")
+      .select("id,park_id,website_url,photo_url,address,description,created_at,parks(reference_code,name,city,state)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      parkDetailSuggestionsStatus.textContent = "Unable to load detail suggestions: " + error.message;
+      return;
+    }
+
+    if (!data?.length) {
+      parkDetailSuggestionsStatus.textContent = "No pending park detail suggestions.";
+      return;
+    }
+
+    parkDetailSuggestionsStatus.textContent = `${data.length} pending suggestion${data.length === 1 ? "" : "s"}.`;
+
+    data.forEach((submission) => {
+      const park = submission.parks || {};
+      const card = document.createElement("div");
+      card.className = "park-result";
+      card.innerHTML = `
+        <h3>${escapeHTML(park.name || "Park")}</h3>
+        <p><strong>CPW:</strong> ${escapeHTML(park.reference_code || "")}</p>
+        <p><strong>Location:</strong> ${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}</p>
+        ${submission.website_url ? `<p><strong>Website:</strong> ${escapeHTML(submission.website_url)}</p>` : ""}
+        ${submission.photo_url ? `<p><strong>Photo:</strong> ${escapeHTML(submission.photo_url)}</p>` : ""}
+        ${submission.address ? `<p><strong>Address:</strong> ${escapeHTML(submission.address)}</p>` : ""}
+        ${submission.description ? `<p><strong>Description:</strong> ${escapeHTML(submission.description)}</p>` : ""}
+      `;
+
+      const actions = document.createElement("div");
+      actions.style.marginTop = "12px";
+
+      ["approved", "rejected"].forEach((action) => {
+        const button = document.createElement("button");
+        button.textContent = action === "approved" ? "Approve Details" : "Reject";
+        button.style.marginRight = "8px";
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          const { error: reviewError } = await supabaseClient.rpc("admin_review_park_detail_submission", {
+            p_submission_id: submission.id,
+            p_action: action,
+            p_review_notes: null
+          });
+          if (reviewError) {
+            alert("Review failed: " + reviewError.message);
+            button.disabled = false;
+            return;
+          }
+          await loadParkDetailSuggestions();
+        });
+        actions.appendChild(button);
+      });
+
+      card.appendChild(actions);
+      parkDetailSuggestionsResults.appendChild(card);
+    });
+  }
+
+  refreshParkDetailSuggestionsButton.addEventListener("click", loadParkDetailSuggestions);
+  async function loadQualityReviewParks() {
     qualityReviewResults.innerHTML = "";
     qualityReviewStatus.textContent = "Loading flagged parks...";
 
