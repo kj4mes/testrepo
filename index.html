@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>City Park Waves</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQ3ynh7UyZ9dZ6yCWl48VhBz4F0fR2M="
+    crossorigin=""
+  >
 
   <style>
     * {
@@ -117,6 +123,20 @@
     #status {
       margin-top: 20px;
       color: #555;
+    }
+
+    #nearbyMap {
+      height: 430px;
+      border-radius: 10px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    #nearbyResults {
+      display: grid;
+      gap: 15px;
+      margin-top: 20px;
+      text-align: left;
     }
 
     #results {
@@ -264,6 +284,15 @@
 
     <div id="status"></div>
     <div id="results"></div>
+
+    <div style="margin-top:25px;border-top:1px solid #ddd;padding-top:20px;">
+      <h3>Find Parks Near Me</h3>
+      <p>Use your device location to show the nearest parks on a map.</p>
+      <button id="nearMeButton">Use My Current Location</button>
+      <div id="nearbyStatus" style="margin-top:14px;"></div>
+      <div id="nearbyMap"></div>
+      <div id="nearbyResults"></div>
+    </div>
 
   </div>
 
@@ -494,6 +523,10 @@
   <p>Discover parks. Get on the air. Make contacts.</p>
 </footer>
 
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
@@ -542,6 +575,140 @@
   const searchButton = document.getElementById("searchButton");
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
+  const nearMeButton = document.getElementById("nearMeButton");
+  const nearbyStatus = document.getElementById("nearbyStatus");
+  const nearbyResults = document.getElementById("nearbyResults");
+  let nearbyMap = null;
+  let nearbyLayer = null;
+
+  function ensureNearbyMap(lat, lon) {
+    if (!nearbyMap) {
+      nearbyMap = L.map("nearbyMap").setView([lat, lon], 11);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(nearbyMap);
+    } else {
+      nearbyMap.setView([lat, lon], 11);
+    }
+
+    if (nearbyLayer) {
+      nearbyLayer.clearLayers();
+    } else {
+      nearbyLayer = L.layerGroup().addTo(nearbyMap);
+    }
+
+    L.circleMarker([lat, lon], {
+      radius: 8
+    })
+      .bindPopup("Your location")
+      .addTo(nearbyLayer);
+  }
+
+  async function findNearbyParks() {
+    nearbyStatus.textContent = "";
+    nearbyResults.innerHTML = "";
+
+    if (!navigator.geolocation) {
+      nearbyStatus.textContent =
+        "Location services are not supported by this browser.";
+      return;
+    }
+
+    nearMeButton.disabled = true;
+    nearbyStatus.textContent = "Getting your location...";
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        ensureNearbyMap(lat, lon);
+        nearbyStatus.textContent = "Finding nearby parks...";
+
+        try {
+          const response = await fetch(
+            `/api/nearby-parks?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&limit=25`
+          );
+
+          const parks = await response.json();
+
+          if (!response.ok) {
+            nearbyStatus.textContent =
+              parks.error || "Unable to search nearby parks.";
+            nearMeButton.disabled = false;
+            return;
+          }
+
+          if (!parks.length) {
+            nearbyStatus.textContent =
+              "No mapped parks were found nearby yet.";
+            nearMeButton.disabled = false;
+            return;
+          }
+
+          nearbyStatus.textContent =
+            `Showing the ${parks.length} nearest mapped park${parks.length === 1 ? "" : "s"}.`;
+
+          const bounds = [[lat, lon]];
+
+          parks.forEach((park) => {
+            const plat = Number(park.latitude);
+            const plon = Number(park.longitude);
+
+            if (Number.isFinite(plat) && Number.isFinite(plon)) {
+              bounds.push([plat, plon]);
+
+              L.marker([plat, plon])
+                .bindPopup(
+                  `<strong>${escapeHTML(park.name)}</strong><br>` +
+                  `${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}<br>` +
+                  `${Number(park.distance_miles).toFixed(1)} miles away`
+                )
+                .addTo(nearbyLayer);
+            }
+
+            const card = document.createElement("div");
+            card.className = "park-result";
+
+            card.innerHTML = `
+              <h3>${escapeHTML(park.name)}</h3>
+              <p><strong>Location:</strong> ${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
+              <p><strong>Distance:</strong> ${Number(park.distance_miles).toFixed(1)} miles</p>
+              ${park.reference_code ? `<p><strong>CPW:</strong> ${escapeHTML(park.reference_code)}</p>` : ""}
+            `;
+
+            nearbyResults.appendChild(card);
+          });
+
+          if (bounds.length > 1) {
+            nearbyMap.fitBounds(bounds, { padding: [25, 25] });
+          }
+
+        } catch (error) {
+          console.error(error);
+          nearbyStatus.textContent =
+            "Unable to search nearby parks.";
+        } finally {
+          nearMeButton.disabled = false;
+        }
+      },
+      (error) => {
+        console.error(error);
+        nearbyStatus.textContent =
+          "Location permission was not granted or your location could not be determined.";
+        nearMeButton.disabled = false;
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  }
+
+  nearMeButton.addEventListener("click", findNearbyParks);
 
   async function searchParks() {
     const searchTerm = searchInput.value.trim();
