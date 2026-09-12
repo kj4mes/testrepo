@@ -220,6 +220,7 @@
   <nav>
     <a href="#parks">Find Parks</a>
     <a href="#activate">Submit Log</a>
+    <a href="#my-activations">My Activations</a>
     <a href="#account">Account</a>
     <a href="#callsign">Verify Callsign</a>
     <a href="#about">About</a>
@@ -338,6 +339,22 @@
 
 </section>
 
+<section class="section" id="my-activations">
+
+  <h2>My Activations</h2>
+
+  <p>
+    Your submitted City Park Waves activations will appear here.
+  </p>
+
+  <div class="search">
+    <button id="refreshActivationsButton">Refresh Activations</button>
+    <div id="myActivationsStatus" style="margin-top:16px;"></div>
+    <div id="myActivationsResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
+  </div>
+
+</section>
+
 <section class="section" id="account">
 
   <h2>Operator Account</h2>
@@ -445,6 +462,9 @@
   const adifPreview = document.getElementById("adifPreview");
   const submitActivationButton = document.getElementById("submitActivationButton");
   const activationSubmitStatus = document.getElementById("activationSubmitStatus");
+  const refreshActivationsButton = document.getElementById("refreshActivationsButton");
+  const myActivationsStatus = document.getElementById("myActivationsStatus");
+  const myActivationsResults = document.getElementById("myActivationsResults");
 
   let selectedActivationPark = null;
   let parsedAdifRecords = [];
@@ -611,30 +631,66 @@
             }
           }
 
-          const { error: saveError } = await supabaseClient
-            .from("operators")
-            .upsert({
-              auth_user_id: session.user.id,
-              callsign: data.callsign,
-              callsign_status: "active",
-              license_class: data.service || null,
-              license_expiration: expirationDate,
-              callsign_verified: true,
-              callsign_verified_at: new Date().toISOString(),
-              verification_source: data.source || "HamDB / FCC ULS",
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: "auth_user_id"
-            });
+          const profileValues = {
+            auth_user_id: session.user.id,
+            callsign: data.callsign,
+            callsign_status: "active",
+            license_class: data.service || null,
+            license_expiration: expirationDate,
+            callsign_verified: true,
+            callsign_verified_at: new Date().toISOString(),
+            verification_source: data.source || "HamDB / FCC ULS",
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: existingProfile, error: profileLookupError } =
+            await supabaseClient
+              .from("operators")
+              .select("id")
+              .eq("auth_user_id", session.user.id)
+              .maybeSingle();
+
+          let saveError = profileLookupError;
+
+          if (!saveError) {
+            if (existingProfile?.id) {
+              const result = await supabaseClient
+                .from("operators")
+                .update(profileValues)
+                .eq("id", existingProfile.id);
+
+              saveError = result.error;
+            } else {
+              const result = await supabaseClient
+                .from("operators")
+                .insert(profileValues);
+
+              saveError = result.error;
+            }
+          }
+
+          if (!saveError) {
+            const { data: confirmedProfile, error: confirmError } =
+              await supabaseClient
+                .from("operators")
+                .select("callsign,callsign_verified")
+                .eq("auth_user_id", session.user.id)
+                .maybeSingle();
+
+            if (confirmError || !confirmedProfile?.callsign_verified) {
+              saveError = confirmError || new Error("Profile verification could not be confirmed.");
+            }
+          }
 
           if (saveError) {
             console.error(saveError);
             callsignStatus.textContent +=
               " Verification worked, but the callsign could not be saved to your account: " +
-              saveError.message;
+              (saveError.message || "unknown error");
           } else {
             callsignStatus.textContent +=
               " Saved to your operator account.";
+            await refreshAccountStatus();
           }
         } else {
           callsignStatus.textContent +=
@@ -910,6 +966,7 @@
     adifFile.value = "";
     parsedAdifRecords = [];
     adifPreview.textContent = "";
+    await loadMyActivations();
   }
 
   activationParkSearchButton.addEventListener("click", searchActivationParks);
@@ -917,6 +974,71 @@
     if (event.key === "Enter") searchActivationParks();
   });
   submitActivationButton.addEventListener("click", submitActivationLog);
+
+  async function loadMyActivations() {
+    myActivationsResults.innerHTML = "";
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      myActivationsStatus.textContent =
+        "Sign in to see your submitted activations.";
+      return;
+    }
+
+    myActivationsStatus.textContent = "Loading activations...";
+
+    const { data: activations, error } = await supabaseClient
+      .from("activations")
+      .select("id,station_callsign,qso_count,first_qso_at,last_qso_at,created_at,parks(name,city,state)")
+      .eq("auth_user_id", session.user.id)
+      .order("first_qso_at", { ascending: false, nullsFirst: false });
+
+    if (error) {
+      console.error(error);
+      myActivationsStatus.textContent =
+        "Unable to load your activations: " + error.message;
+      return;
+    }
+
+    if (!activations?.length) {
+      myActivationsStatus.textContent =
+        "You have not submitted any activations yet.";
+      return;
+    }
+
+    myActivationsStatus.textContent =
+      `${activations.length} activation${activations.length === 1 ? "" : "s"} submitted.`;
+
+    activations.forEach((activation) => {
+      const card = document.createElement("div");
+      card.className = "park-result";
+
+      const park = activation.parks || {};
+      const location = [park.city, park.state].filter(Boolean).join(", ");
+
+      let dateText = "Date unavailable";
+
+      if (activation.first_qso_at) {
+        dateText = new Date(activation.first_qso_at).toLocaleString();
+      } else if (activation.created_at) {
+        dateText = new Date(activation.created_at).toLocaleString();
+      }
+
+      card.innerHTML = `
+        <h3>${escapeHTML(park.name || "Park")}</h3>
+        ${location ? `<p><strong>Location:</strong> ${escapeHTML(location)}</p>` : ""}
+        <p><strong>Callsign:</strong> ${escapeHTML(activation.station_callsign)}</p>
+        <p><strong>QSOs:</strong> ${escapeHTML(activation.qso_count)}</p>
+        <p><strong>Activation:</strong> ${escapeHTML(dateText)}</p>
+      `;
+
+      myActivationsResults.appendChild(card);
+    });
+  }
+
+  refreshActivationsButton.addEventListener("click", loadMyActivations);
 
   async function refreshAccountStatus() {
     const { data } = await supabaseClient.auth.getSession();
@@ -1016,9 +1138,11 @@
 
   supabaseClient.auth.onAuthStateChange(() => {
     refreshAccountStatus();
+    loadMyActivations();
   });
 
   refreshAccountStatus();
+  loadMyActivations();
 </script>
 
 </body>
