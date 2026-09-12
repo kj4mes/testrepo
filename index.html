@@ -172,6 +172,17 @@
       cursor: pointer;
     }
 
+    .map-link {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 9px 14px;
+      border-radius: 6px;
+      background: #f3b33d;
+      color: #17211d;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
     .selected-park {
       background: #eaf6f1;
       border: 1px solid #28745f;
@@ -677,6 +688,12 @@
               <p><strong>Location:</strong> ${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
               <p><strong>Distance:</strong> ${Number(park.distance_miles).toFixed(1)} miles</p>
               ${park.reference_code ? `<p><strong>CPW:</strong> ${escapeHTML(park.reference_code)}</p>` : ""}
+              <a
+                class="map-link"
+                href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${park.latitude},${park.longitude}`)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >View on Google Maps</a>
             `;
 
             nearbyResults.appendChild(card);
@@ -758,6 +775,16 @@
           <p><strong>Location:</strong> ${escapeHTML(locationParts.join(", "))}</p>
           ${park.park_type ? `<p><strong>Type:</strong> ${escapeHTML(park.park_type)}</p>` : ""}
           ${park.notes ? `<p>${escapeHTML(park.notes)}</p>` : ""}
+          <a
+            class="map-link"
+            href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              park.latitude != null && park.longitude != null
+                ? `${park.latitude},${park.longitude}`
+                : [park.name, park.city, park.state].filter(Boolean).join(", ")
+            )}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on Google Maps</a>
         `;
 
         resultsBox.appendChild(card);
@@ -1196,6 +1223,16 @@
         card.innerHTML = `
           <h3>${escapeHTML(park.name)}</h3>
           <p>${escapeHTML(location)}</p>
+          <a
+            class="map-link"
+            href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              park.latitude != null && park.longitude != null
+                ? `${park.latitude},${park.longitude}`
+                : [park.name, park.city, park.state].filter(Boolean).join(", ")
+            )}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on Google Maps</a>
         `;
 
         const button = document.createElement("button");
