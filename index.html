@@ -1330,6 +1330,56 @@
       }
     }
 
+  
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 18px;
+      margin-top: 28px;
+      text-align: left;
+    }
+
+    .rule-card {
+      background: white;
+      border: 1px solid var(--cpw-border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(23,50,77,.07);
+    }
+
+    .rule-card h3 {
+      margin-top: 0;
+      color: #12344a;
+    }
+
+    .rule-callout {
+      max-width: 800px;
+      margin: 24px auto 0;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #effff4, #eef9ff);
+      border: 1px solid var(--cpw-border);
+      font-weight: 800;
+      color: #23485e;
+    }
+
+    .rule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+    }
+
+    .rule-table th,
+    .rule-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #e6edf0;
+      text-align: left;
+    }
+
+    .rule-table th {
+      color: #12344a;
+    }
+
   </style>
 </head>
 
@@ -1383,6 +1433,7 @@
       <a href="#submit-park" data-panel-link="submit-park">Submit a Missing Park</a>
       <a href="#account" data-panel-link="account">Account</a>
       <a href="#callsign" data-panel-link="callsign">Verify Callsign</a>
+      <a href="#rules" data-panel-link="rules">Activation Rules</a>
       <a href="#about" data-panel-link="about">About</a>
       <div class="menu-separator admin-menu-item"></div>
       <a class="admin-menu-item" href="#admin-review" data-panel-link="admin-review">Admin: Review Parks</a>
@@ -1490,6 +1541,7 @@
     <div class="home-tagline">Same hobby. More parks. More reasons to get outside.</div>
     <div style="text-align:center;margin-top:14px;">
       <a class="button primary" href="#activity" data-panel-link="activity">🔥 See Recent Activity</a>
+      <a class="button secondary" href="#rules" data-panel-link="rules">📜 Activation Rules</a>
     </div>
   </div>
 </section>
@@ -1875,6 +1927,97 @@
     <div id="callsignResult"></div>
   </div>
 
+</section>
+
+<section class="section app-panel" id="rules">
+  <h2>City Park Waves Activation Rules</h2>
+
+  <p>
+    The goal is simple: get outside, operate from a real public park, and make enough valid contacts to count the activation.
+  </p>
+
+  <div class="rule-callout">
+    Your QSO requirement is tied automatically to the FCC license class saved with your verified callsign account.
+  </div>
+
+  <div class="rules-grid">
+    <div class="rule-card">
+      <h3>📡 QSO Requirements</h3>
+      <table class="rule-table">
+        <tr>
+          <th>License Class</th>
+          <th>Minimum QSOs</th>
+        </tr>
+        <tr>
+          <td>Technician</td>
+          <td><strong>5</strong></td>
+        </tr>
+        <tr>
+          <td>General</td>
+          <td><strong>10</strong></td>
+        </tr>
+        <tr>
+          <td>Amateur Extra</td>
+          <td><strong>10</strong></td>
+        </tr>
+        <tr>
+          <td>Unknown / unrecognized</td>
+          <td><strong>10</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="rule-card">
+      <h3>✅ Verified Operator</h3>
+      <p>
+        You must be signed in with a verified amateur radio callsign before submitting an activation.
+      </p>
+      <p>
+        The site's QSO requirement comes from the license class stored on that verified operator account.
+      </p>
+    </div>
+
+    <div class="rule-card">
+      <h3>🌳 Operate From the Park</h3>
+      <p>
+        Your station must be physically located within the boundaries of the selected public park during the activation.
+      </p>
+      <p>
+        The activation is tied to one City Park Waves park reference.
+      </p>
+    </div>
+
+    <div class="rule-card">
+      <h3>📝 Valid Log</h3>
+      <p>
+        Submit an ADIF log containing valid QSO records. Each contact must include a contacted callsign, and the log should include date/time information.
+      </p>
+      <p>
+        The station callsign in the log must match the callsign tied to your verified account.
+      </p>
+    </div>
+
+    <div class="rule-card">
+      <h3>🎙️ Modes & Bands</h3>
+      <p>
+        Any legal amateur-radio mode or band may be used: SSB, CW, FT8, RTTY, digital, satellites, and more.
+      </p>
+      <p>
+        There is no power-level or equipment requirement.
+      </p>
+    </div>
+
+    <div class="rule-card">
+      <h3>🚫 Duplicate Submissions</h3>
+      <p>
+        The same activation log should only be submitted once. Duplicate-log detection will be enforced as the system is finalized.
+      </p>
+    </div>
+  </div>
+
+  <div class="rule-callout">
+    City Park Waves is intended to encourage portable operating, not make it complicated. If the operator is really in the park, uses their verified callsign, and meets the required QSO count, the activation counts.
+  </div>
 </section>
 
 <section class="section app-panel" id="about">
