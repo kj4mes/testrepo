@@ -367,6 +367,7 @@
       Review imported parks that are missing a usable municipality or otherwise need cleanup.
     </p>
     <button id="refreshQualityReviewButton">Refresh Flagged Parks</button>
+    <button id="repairMunicipalitiesButton" style="margin-left:8px;">Auto-Fill Missing Municipalities</button>
     <div id="qualityReviewStatus" style="margin-top:14px;"></div>
     <div id="qualityReviewResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
   </div>
@@ -674,6 +675,7 @@
   const refreshQualityReviewButton = document.getElementById("refreshQualityReviewButton");
   const qualityReviewStatus = document.getElementById("qualityReviewStatus");
   const qualityReviewResults = document.getElementById("qualityReviewResults");
+  const repairMunicipalitiesButton = document.getElementById("repairMunicipalitiesButton");
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
@@ -1280,6 +1282,89 @@
       qualityReviewResults.appendChild(card);
     });
   }
+
+
+  async function getRepairAccessToken() {
+    const { data: refreshed, error: refreshError } =
+      await supabaseClient.auth.refreshSession();
+
+    if (!refreshError && refreshed?.session?.access_token) {
+      return refreshed.session.access_token;
+    }
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    return sessionData?.session?.access_token || null;
+  }
+
+  async function repairMissingMunicipalities() {
+    if (!confirm("Use U.S. Census coordinate lookup to auto-fill missing municipalities?")) {
+      return;
+    }
+
+    repairMunicipalitiesButton.disabled = true;
+
+    let totalProcessed = 0;
+    let totalRepaired = 0;
+    let unchangedBatches = 0;
+
+    try {
+      while (true) {
+        const accessToken = await getRepairAccessToken();
+
+        if (!accessToken) {
+          throw new Error("Your sign-in session expired. Please sign in again.");
+        }
+
+        qualityReviewStatus.textContent =
+          `Repairing missing municipalities... ${totalRepaired} updated so far.`;
+
+        const response = await fetch("/api/repair-municipalities", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const details = data.details ? ` Details: ${data.details}` : "";
+          throw new Error((data.error || "Municipality cleanup failed.") + details);
+        }
+
+        totalProcessed += Number(data.processed || 0);
+        totalRepaired += Number(data.repaired || 0);
+
+        if (Number(data.processed || 0) === 0) {
+          break;
+        }
+
+        if (Number(data.repaired || 0) === 0) {
+          unchangedBatches += 1;
+        } else {
+          unchangedBatches = 0;
+        }
+
+        if (unchangedBatches >= 3) {
+          break;
+        }
+      }
+
+      qualityReviewStatus.textContent =
+        `✓ Municipality cleanup pass finished. ${totalRepaired} park record${totalRepaired === 1 ? "" : "s"} updated from U.S. Census geography data.`;
+
+      await loadQualityReviewParks();
+
+    } catch (error) {
+      console.error(error);
+      qualityReviewStatus.textContent =
+        "Municipality cleanup stopped: " + error.message;
+    } finally {
+      repairMunicipalitiesButton.disabled = false;
+    }
+  }
+
+  repairMunicipalitiesButton.addEventListener("click", repairMissingMunicipalities);
 
   refreshQualityReviewButton.addEventListener("click", loadQualityReviewParks);
 
