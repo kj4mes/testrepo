@@ -1057,6 +1057,146 @@
       }
     }
 
+  
+    .park-detail-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .park-detail-hero {
+      padding: 26px;
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, #e8fbff, #effff4 55%, #fff8da);
+      border: 1px solid var(--cpw-border);
+      box-shadow: 0 14px 34px rgba(23,50,77,.08);
+      margin-bottom: 22px;
+    }
+
+    .park-detail-ref {
+      display: inline-block;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #12344a;
+      color: white;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: .04em;
+      margin-bottom: 10px;
+    }
+
+    .park-detail-title {
+      margin: 0;
+      font-size: clamp(30px, 6vw, 48px);
+      color: #12344a;
+      line-height: 1.05;
+    }
+
+    .park-detail-location {
+      color: #557083;
+      font-weight: 700;
+      margin-top: 9px;
+    }
+
+    .park-detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .park-detail-actions a,
+    .park-detail-actions button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .park-detail-actions .primary {
+      background: var(--cpw-blue);
+      color: white;
+    }
+
+    .park-detail-actions .secondary {
+      background: var(--cpw-yellow);
+      color: #3b2f00;
+    }
+
+    .park-detail-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 14px;
+      margin: 18px 0 24px;
+    }
+
+    .park-detail-stat {
+      border-radius: 18px;
+      background: white;
+      border: 1px solid var(--cpw-border);
+      box-shadow: 0 9px 24px rgba(23,50,77,.06);
+      padding: 19px;
+      text-align: center;
+    }
+
+    .park-detail-stat strong {
+      display: block;
+      font-size: 28px;
+      color: #12344a;
+      margin-bottom: 4px;
+    }
+
+    .park-detail-card {
+      background: white;
+      border: 1px solid var(--cpw-border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(23,50,77,.06);
+      margin-bottom: 20px;
+    }
+
+    .park-detail-card h3 {
+      margin-top: 0;
+      color: #12344a;
+    }
+
+    .recent-activation-row {
+      padding: 13px 0;
+      border-top: 1px solid #e8eef1;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .recent-activation-row:first-child {
+      border-top: 0;
+    }
+
+    .park-detail-button {
+      margin-top: 12px;
+      padding: 9px 14px;
+      border: 0;
+      border-radius: 999px;
+      background: #eaf8ff;
+      color: #0b668f;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      .park-detail-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .recent-activation-row {
+        flex-direction: column;
+        gap: 5px;
+      }
+    }
+
   </style>
 </head>
 
@@ -1248,6 +1388,14 @@
 
   </div>
 
+</section>
+
+<section class="section app-panel" id="park-detail">
+  <div class="park-detail-wrap">
+    <button id="parkDetailBackButton" class="park-detail-button">← Back to Park Search</button>
+    <div id="parkDetailStatus" style="margin-top:18px;"></div>
+    <div id="parkDetailContent"></div>
+  </div>
 </section>
 
 <section class="section app-panel" id="submit-park">
@@ -1586,6 +1734,121 @@
     }
   }
 
+  const parkDetailStatus = document.getElementById("parkDetailStatus");
+  const parkDetailContent = document.getElementById("parkDetailContent");
+  const parkDetailBackButton = document.getElementById("parkDetailBackButton");
+
+  function parkDetailDate(value) {
+    if (!value) return "—";
+    return new Date(value).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  async function openParkDetails(referenceCode) {
+    if (!referenceCode) return;
+
+    parkDetailStatus.textContent = "Loading park details...";
+    parkDetailContent.innerHTML = "";
+    showPanel("park-detail", false);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("park", referenceCode);
+    url.hash = "park-detail";
+    history.replaceState(null, "", url);
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_park_details", {
+        p_reference_code: referenceCode
+      });
+
+      if (error) throw error;
+
+      if (!data?.park) {
+        parkDetailStatus.textContent = "That park could not be found.";
+        return;
+      }
+
+      const park = data.park;
+      const stats = data.stats || {};
+      const recent = data.recent_activations || [];
+      const location = [park.city, park.state, park.zip_code].filter(Boolean).join(", ");
+      const mapQuery =
+        park.latitude != null && park.longitude != null
+          ? `${park.latitude},${park.longitude}`
+          : [park.name, park.city, park.state].filter(Boolean).join(", ");
+
+      parkDetailStatus.textContent = "";
+
+      parkDetailContent.innerHTML = `
+        <div class="park-detail-hero">
+          <div class="park-detail-ref">${escapeHTML(park.reference_code)}</div>
+          <h2 class="park-detail-title">${escapeHTML(park.name)}</h2>
+          <div class="park-detail-location">📍 ${escapeHTML(location)}</div>
+
+          <div class="park-detail-actions">
+            <a class="primary"
+              href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}"
+              target="_blank"
+              rel="noopener noreferrer">Open in Google Maps</a>
+            ${park.website_url ? `
+              <a class="secondary"
+                href="${escapeHTML(park.website_url)}"
+                target="_blank"
+                rel="noopener noreferrer">Park Website</a>` : ""}
+          </div>
+        </div>
+
+        <div class="park-detail-stats">
+          <div class="park-detail-stat">
+            <strong>${Number(stats.activations || 0).toLocaleString()}</strong>
+            Activations
+          </div>
+          <div class="park-detail-stat">
+            <strong>${Number(stats.qsos || 0).toLocaleString()}</strong>
+            Logged QSOs
+          </div>
+          <div class="park-detail-stat">
+            <strong>${parkDetailDate(stats.first_activation_at)}</strong>
+            First Activation
+          </div>
+        </div>
+
+        <div class="park-detail-card">
+          <h3>Park Information</h3>
+          ${park.park_type ? `<p><strong>Type:</strong> ${escapeHTML(park.park_type)}</p>` : ""}
+          ${park.county ? `<p><strong>County:</strong> ${escapeHTML(park.county)}</p>` : ""}
+          ${park.address ? `<p><strong>Address:</strong> ${escapeHTML(park.address)}</p>` : ""}
+          ${park.description ? `<p>${escapeHTML(park.description)}</p>` : ""}
+          ${park.source_name ? `<p><strong>Data source:</strong> ${escapeHTML(park.source_name)}</p>` : ""}
+        </div>
+
+        <div class="park-detail-card">
+          <h3>Recent Activations</h3>
+          ${recent.length ? recent.map((activation) => `
+            <div class="recent-activation-row">
+              <div><strong>${escapeHTML(activation.station_callsign)}</strong></div>
+              <div>${Number(activation.qso_count || 0).toLocaleString()} QSOs • ${parkDetailDate(activation.activation_at)}</div>
+            </div>
+          `).join("") : "<p>No activations have been submitted for this park yet.</p>"}
+        </div>
+      `;
+    } catch (error) {
+      console.error(error);
+      parkDetailStatus.textContent = "Unable to load park details.";
+    }
+  }
+
+  parkDetailBackButton.addEventListener("click", () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("park");
+    url.hash = "parks";
+    history.replaceState(null, "", url);
+    showPanel("parks", false);
+  });
+
   const menuButton = document.getElementById("menuButton");
   const menuPanel = document.getElementById("menuPanel");
   const panelLinks = Array.from(document.querySelectorAll("[data-panel-link]"));
@@ -1654,7 +1917,14 @@
     showPanel(window.location.hash.slice(1) || "home", false);
   });
 
-  showPanel(window.location.hash.slice(1) || "home", false);
+  const initialParkReference = new URLSearchParams(window.location.search).get("park");
+
+  if (initialParkReference) {
+    openParkDetails(initialParkReference);
+  } else {
+    showPanel(window.location.hash.slice(1) || "home", false);
+  }
+
   loadHomeStats();
 
   const searchInput = document.getElementById("parkSearch");
@@ -1858,7 +2128,15 @@
             target="_blank"
             rel="noopener noreferrer"
           >View on Google Maps</a>
+          ${park.reference_code ? `<button class="park-detail-button" data-park-ref="${escapeHTML(park.reference_code)}">Park Details</button>` : ""}
         `;
+
+        const detailsButton = card.querySelector("[data-park-ref]");
+        if (detailsButton) {
+          detailsButton.addEventListener("click", () => {
+            openParkDetails(detailsButton.dataset.parkRef);
+          });
+        }
 
         resultsBox.appendChild(card);
       });
