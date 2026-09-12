@@ -328,7 +328,8 @@
       if (!response.ok) {
         const errorText = await response.text();
         console.error(errorText);
-        statusBox.textContent = "There was a problem searching the park database.";
+        statusBox.textContent =
+          "Search error " + response.status + ": " + errorText.slice(0, 300);
         return;
       }
 
