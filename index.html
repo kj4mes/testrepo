@@ -1383,12 +1383,15 @@
     </div>
 
     <div style="margin-top:16px;text-align:left;">
-      <label style="font-weight:700;">
-        <input id="documentedOnlyFilter" type="checkbox">
-        Only show parks with a website or photo
-      </label>
-      <div style="font-size:13px;color:#667987;margin-top:5px;">
-        Useful once parks are enriched with more detail.
+      <label for="parkQualityFilter" style="font-weight:800;">Park quality filter</label>
+      <select id="parkQualityFilter" style="width:100%;margin-top:7px;padding:12px;border:1px solid #cbd9df;border-radius:10px;background:white;font-size:15px;">
+        <option value="all">All valid parks</option>
+        <option value="documented">Well documented parks</option>
+        <option value="media">Has website or photo</option>
+        <option value="activated">Previously activated</option>
+      </select>
+      <div style="font-size:13px;color:#667987;margin-top:6px;">
+        “Well documented” means the park has at least one extra confidence signal: website, photo, address, description, or prior activation.
       </div>
     </div>
 
@@ -2009,7 +2012,7 @@
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
   const nearMeButton = document.getElementById("nearMeButton");
-  const documentedOnlyFilter = document.getElementById("documentedOnlyFilter");
+  const parkQualityFilter = document.getElementById("parkQualityFilter");
   const nearbyStatus = statusBox;
   const nearbyResults = resultsBox;
   let nearbyMap = null;
@@ -2085,7 +2088,7 @@
 
   nearMeButton.addEventListener("click", findNearbyParks);
 
-  documentedOnlyFilter.addEventListener("change", () => {
+  parkQualityFilter.addEventListener("change", () => {
     if (lastNearbySearch) {
       renderNearbyParks(
         lastNearbySearch.lat,
@@ -2103,7 +2106,7 @@
 
     try {
       const response = await fetch(
-        `/api/nearby-parks?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&limit=25&documented=${documentedOnlyFilter.checked ? "1" : "0"}`
+        `/api/nearby-parks?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&limit=25&quality=${encodeURIComponent(parkQualityFilter.value)}`
       );
 
       const parks = await response.json();
@@ -2149,6 +2152,7 @@
           <p><strong>Location:</strong> ${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
           <p><strong>Distance:</strong> ${Number(park.distance_miles).toFixed(1)} miles</p>
           ${park.reference_code ? `<p><strong>CPW:</strong> ${escapeHTML(park.reference_code)}</p>` : ""}
+          ${Number(park.activation_count || 0) > 0 ? `<p><strong>📡 Activity:</strong> ${Number(park.activation_count).toLocaleString()} activation${Number(park.activation_count) === 1 ? "" : "s"}</p>` : ""}
           ${park.photo_url ? `<img src="${escapeHTML(park.photo_url)}" alt="${escapeHTML(park.name)}" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:10px;">` : ""}
           ${park.website_url ? `<a class="map-link" href="${escapeHTML(park.website_url)}" target="_blank" rel="noopener noreferrer">Park Website</a>` : ""}
           <a
