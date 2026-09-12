@@ -13,6 +13,7 @@ function deriveCity(attributes) {
 
   return String(raw)
     .replace(/^(city|town|village|borough|municipality)\s+of\s+/i, "")
+    .replace(/,\s*(city|town|village|borough)\s+of$/i, "")
     .replace(/\s+(parks?(\s+and\s+recreation)?|park\s+department).*$/i, "")
     .trim() || "Unknown";
 }
