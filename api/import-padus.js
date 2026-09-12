@@ -154,30 +154,34 @@ export default async function handler(req, res) {
     let imported = 0;
 
     if (rows.length) {
-      const insertResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/parks?on_conflict=source_name,source_id`,
+      const rpcResponse = await fetch(
+        SUPABASE_URL + "/rest/v1/rpc/admin_import_parks",
         {
           method: "POST",
           headers: {
             apikey: SUPABASE_KEY,
             Authorization: authHeader,
-            "Content-Type": "application/json",
-            Prefer: "resolution=ignore-duplicates,return=minimal"
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify(rows)
+          body: JSON.stringify({ payload: rows })
         }
       );
 
-      if (!insertResponse.ok) {
-        const details = await insertResponse.text();
+      const rpcText = await rpcResponse.text();
 
+      if (!rpcResponse.ok) {
         return res.status(502).json({
           error: "Could not save imported parks.",
-          details: details.slice(0, 500)
+          details: rpcText.slice(0, 700)
         });
       }
 
-      imported = rows.length;
+      let rpcData = {};
+      try {
+        rpcData = JSON.parse(rpcText);
+      } catch {}
+
+      imported = Number(rpcData.inserted || 0);
     }
 
     const hasMore =
