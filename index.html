@@ -201,6 +201,7 @@
   <nav>
     <a href="#parks">Find Parks</a>
     <a href="#activate">Activate</a>
+    <a href="#account">Account</a>
     <a href="#callsign">Verify Callsign</a>
     <a href="#about">About</a>
   </nav>
@@ -287,6 +288,41 @@
 
 </section>
 
+<section class="section" id="account">
+
+  <h2>Operator Account</h2>
+
+  <p>
+    Create an account or sign in. Your verified callsign will be linked to this account.
+  </p>
+
+  <div class="search">
+    <div class="search-row">
+      <input
+        id="accountEmail"
+        type="email"
+        placeholder="Email address"
+        autocomplete="email"
+      >
+      <input
+        id="accountPassword"
+        type="password"
+        placeholder="Password (6+ characters)"
+        autocomplete="current-password"
+      >
+    </div>
+
+    <div style="margin-top:12px;">
+      <button id="signUpButton">Create Account</button>
+      <button id="signInButton">Sign In</button>
+      <button id="signOutButton" style="display:none;">Sign Out</button>
+    </div>
+
+    <div id="accountStatus" style="margin-top:16px;"></div>
+  </div>
+
+</section>
+
 <section class="section" id="callsign">
 
   <h2>Verify Your Callsign</h2>
@@ -334,12 +370,23 @@
   <p>Discover parks. Get on the air. Make contacts.</p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
   const callsignButton = document.getElementById("callsignButton");
   const callsignStatus = document.getElementById("callsignStatus");
   const callsignResult = document.getElementById("callsignResult");
+  const accountEmail = document.getElementById("accountEmail");
+  const accountPassword = document.getElementById("accountPassword");
+  const signUpButton = document.getElementById("signUpButton");
+  const signInButton = document.getElementById("signInButton");
+  const signOutButton = document.getElementById("signOutButton");
+  const accountStatus = document.getElementById("accountStatus");
   const searchButton = document.getElementById("searchButton");
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
@@ -482,6 +529,41 @@
 
       callsignResult.appendChild(card);
 
+      if (data.verified) {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const session = sessionData?.session;
+
+        if (session?.user) {
+          const { error: saveError } = await supabaseClient
+            .from("operators")
+            .upsert({
+              auth_user_id: session.user.id,
+              callsign: data.callsign,
+              callsign_status: "active",
+              license_class: data.service || null,
+              license_expiration: data.expiration || null,
+              callsign_verified: true,
+              callsign_verified_at: new Date().toISOString(),
+              verification_source: data.source || "HamDB / FCC ULS",
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: "auth_user_id"
+            });
+
+          if (saveError) {
+            console.error(saveError);
+            callsignStatus.textContent +=
+              " Verification worked, but the callsign could not be saved to your account.";
+          } else {
+            callsignStatus.textContent +=
+              " Saved to your operator account.";
+          }
+        } else {
+          callsignStatus.textContent +=
+            " Sign in above to save this verified callsign to your account.";
+        }
+      }
+
     } catch (error) {
       console.error(error);
       callsignStatus.textContent =
@@ -496,6 +578,108 @@
       verifyCallsign();
     }
   });
+
+  async function refreshAccountStatus() {
+    const { data } = await supabaseClient.auth.getSession();
+    const session = data?.session;
+
+    if (!session?.user) {
+      accountStatus.textContent = "Not signed in.";
+      signUpButton.style.display = "inline-block";
+      signInButton.style.display = "inline-block";
+      signOutButton.style.display = "none";
+      return;
+    }
+
+    signUpButton.style.display = "none";
+    signInButton.style.display = "none";
+    signOutButton.style.display = "inline-block";
+
+    const { data: operator } = await supabaseClient
+      .from("operators")
+      .select("callsign,callsign_verified,license_class,license_expiration")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    if (operator?.callsign) {
+      accountStatus.textContent =
+        `Signed in as ${session.user.email}. Verified callsign: ${operator.callsign}`;
+    } else {
+      accountStatus.textContent =
+        `Signed in as ${session.user.email}. Verify your callsign below.`;
+    }
+  }
+
+  async function createAccount() {
+    const email = accountEmail.value.trim();
+    const password = accountPassword.value;
+
+    if (!email || password.length < 6) {
+      accountStatus.textContent =
+        "Enter a valid email and a password of at least 6 characters.";
+      return;
+    }
+
+    accountStatus.textContent = "Creating account...";
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      accountStatus.textContent = error.message;
+      return;
+    }
+
+    if (data.session) {
+      accountStatus.textContent = "Account created and signed in.";
+    } else {
+      accountStatus.textContent =
+        "Account created. Check your email for the confirmation link, then return here and sign in.";
+    }
+
+    await refreshAccountStatus();
+  }
+
+  async function signIn() {
+    const email = accountEmail.value.trim();
+    const password = accountPassword.value;
+
+    accountStatus.textContent = "Signing in...";
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      accountStatus.textContent = error.message;
+      return;
+    }
+
+    accountPassword.value = "";
+    await refreshAccountStatus();
+  }
+
+  async function signOut() {
+    await supabaseClient.auth.signOut();
+    accountPassword.value = "";
+    await refreshAccountStatus();
+  }
+
+  signUpButton.addEventListener("click", createAccount);
+  signInButton.addEventListener("click", signIn);
+  signOutButton.addEventListener("click", signOut);
+
+  supabaseClient.auth.onAuthStateChange(() => {
+    refreshAccountStatus();
+  });
+
+  refreshAccountStatus();
 </script>
 
 </body>
