@@ -653,6 +653,410 @@
       }
     }
 
+  
+    .brand-mark {
+      width: 54px;
+      height: 54px;
+      padding: 3px;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .brand-mark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .home-shell {
+      position: relative;
+      z-index: 2;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 20px 48px;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+      gap: 38px;
+      align-items: center;
+      text-align: left;
+    }
+
+    .hero-copy {
+      padding: 12px 0;
+    }
+
+    .hero-copy p {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .hero-illustration {
+      position: relative;
+      min-height: 310px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.66)),
+        linear-gradient(135deg, #dff7ff, #ecfff3);
+      border: 1px solid rgba(18,52,74,.08);
+      box-shadow: 0 18px 45px rgba(23,50,77,.12);
+      overflow: hidden;
+    }
+
+    .sun-disc {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      top: 30px;
+      right: 38px;
+      background: var(--cpw-yellow);
+      box-shadow: 0 0 0 12px rgba(250,204,21,.12);
+    }
+
+    .park-hill {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      bottom: -30px;
+      height: 150px;
+      border-radius: 50% 50% 0 0;
+      background: linear-gradient(180deg, #6ee79a, #38c976);
+    }
+
+    .park-tree {
+      position: absolute;
+      left: 34px;
+      bottom: 78px;
+      font-size: 92px;
+      filter: drop-shadow(0 8px 6px rgba(0,0,0,.10));
+    }
+
+    .radio-rig {
+      position: absolute;
+      right: 38px;
+      bottom: 48px;
+      width: 165px;
+      border-radius: 22px;
+      background: #17324d;
+      border: 6px solid #0d2235;
+      padding: 18px 16px 14px;
+      box-shadow: 0 14px 25px rgba(23,50,77,.24);
+      color: white;
+    }
+
+    .radio-screen {
+      background: linear-gradient(135deg, #ffd84a, #facc15);
+      color: #493900;
+      border-radius: 9px;
+      padding: 12px 8px;
+      text-align: center;
+      font-weight: 900;
+      font-size: 25px;
+      letter-spacing: .06em;
+      box-shadow: inset 0 0 0 3px rgba(73,57,0,.12);
+    }
+
+    .radio-controls {
+      display: flex;
+      gap: 7px;
+      margin-top: 11px;
+    }
+
+    .radio-controls span {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #7890a2;
+      display: inline-block;
+    }
+
+    .antenna-stick {
+      position: absolute;
+      right: 94px;
+      bottom: 210px;
+      width: 7px;
+      height: 125px;
+      border-radius: 999px;
+      background: #17324d;
+      transform: rotate(-2deg);
+      transform-origin: bottom;
+    }
+
+    .wave {
+      position: absolute;
+      right: 73px;
+      top: 72px;
+      font-size: 52px;
+      color: var(--cpw-blue);
+      transform: rotate(-7deg);
+      font-weight: bold;
+    }
+
+    .hero-sign {
+      position: absolute;
+      left: 112px;
+      bottom: 38px;
+      background: #f6c67a;
+      border: 4px solid #9a612b;
+      color: #563714;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-weight: 900;
+      transform: rotate(-3deg);
+      box-shadow: 0 8px 14px rgba(86,55,20,.16);
+    }
+
+    .hero-sign::after {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 56px;
+      background: #9a612b;
+      left: 24px;
+      top: 100%;
+    }
+
+    .home-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: -20px;
+      position: relative;
+      z-index: 4;
+    }
+
+    .home-action-card {
+      min-height: 225px;
+      padding: 24px 22px 20px;
+      border-radius: 22px;
+      background: white;
+      box-shadow: 0 16px 34px rgba(23,50,77,.10);
+      border: 1px solid rgba(23,50,77,.07);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .home-action-card.green { background: linear-gradient(180deg, #ebfff2, #fff); }
+    .home-action-card.blue { background: linear-gradient(180deg, #eaf8ff, #fff); }
+    .home-action-card.yellow { background: linear-gradient(180deg, #fff8dc, #fff); }
+    .home-action-card.coral { background: linear-gradient(180deg, #fff0f3, #fff); }
+
+    .home-action-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      margin-bottom: 12px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
+    }
+
+    .green .home-action-icon { background: #bff5cf; }
+    .blue .home-action-icon { background: #ccefff; }
+    .yellow .home-action-icon { background: #ffec9b; }
+    .coral .home-action-icon { background: #ffd6de; }
+
+    .home-action-card h3 {
+      margin: 4px 0 8px;
+      color: #12344a;
+      font-size: 21px;
+    }
+
+    .home-action-card p {
+      margin: 0 0 18px;
+      color: #536c7d;
+      line-height: 1.45;
+      flex: 1;
+    }
+
+    .home-card-link {
+      display: inline-block;
+      width: 100%;
+      padding: 11px 15px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 800;
+      color: white;
+      background: var(--cpw-teal);
+    }
+
+    .green .home-card-link { background: #22b95f; }
+    .blue .home-card-link { background: var(--cpw-blue); }
+    .yellow .home-card-link { background: #e6aa00; color: #3b2f00; }
+    .coral .home-card-link { background: var(--cpw-coral); }
+
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 1px;
+      margin-top: 28px;
+      border: 1px solid var(--cpw-border);
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--cpw-border);
+      box-shadow: 0 12px 30px rgba(23,50,77,.07);
+    }
+
+    .stat-item {
+      background: white;
+      padding: 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 92px;
+    }
+
+    .stat-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #ebfaf5;
+      font-size: 23px;
+    }
+
+    .stat-copy {
+      text-align: left;
+    }
+
+    .stat-number {
+      font-size: 24px;
+      font-weight: 900;
+      color: #12344a;
+      line-height: 1;
+    }
+
+    .stat-label {
+      margin-top: 5px;
+      font-size: 13px;
+      color: #607887;
+      font-weight: 700;
+    }
+
+    .home-tagline {
+      text-align: center;
+      color: #496579;
+      margin-top: 24px;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    footer .footer-wave {
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-layout {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .hero-copy p {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .hero-actions {
+        justify-content: center;
+      }
+
+      .hero-illustration {
+        min-height: 280px;
+      }
+
+      .home-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stats-strip {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .home-shell {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .hero-layout {
+        gap: 22px;
+      }
+
+      .hero-illustration {
+        min-height: 235px;
+      }
+
+      .park-tree {
+        left: 18px;
+        bottom: 63px;
+        font-size: 70px;
+      }
+
+      .radio-rig {
+        right: 20px;
+        bottom: 35px;
+        width: 142px;
+      }
+
+      .antenna-stick {
+        right: 67px;
+        bottom: 176px;
+        height: 102px;
+      }
+
+      .wave {
+        right: 46px;
+        top: 52px;
+        font-size: 42px;
+      }
+
+      .hero-sign {
+        left: 75px;
+        bottom: 30px;
+        font-size: 12px;
+      }
+
+      .home-actions {
+        grid-template-columns: 1fr;
+        margin-top: -6px;
+      }
+
+      .home-action-card {
+        min-height: 0;
+      }
+
+      .stats-strip {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stat-item {
+        min-height: 100px;
+        flex-direction: column;
+      }
+
+      .stat-copy {
+        text-align: center;
+      }
+    }
+
   </style>
 </head>
 
@@ -660,7 +1064,19 @@
 
 <header>
   <div class="logo">
-    <div class="brand-mark">🌳</div>
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 64 64" role="img">
+        <rect width="64" height="64" rx="16" fill="#e9fff0"/>
+        <path d="M13 49h38" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+        <rect x="27" y="28" width="6" height="20" rx="3" fill="#8b5e3c"/>
+        <circle cx="30" cy="24" r="14" fill="#4ade80"/>
+        <circle cx="19" cy="28" r="9" fill="#22c55e"/>
+        <circle cx="40" cy="28" r="10" fill="#16a34a"/>
+        <path d="M46 14c5 3 7 7 7 12M49 9c8 4 12 10 12 17" fill="none" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round"/>
+        <path d="M44 19c2 2 3 4 3 7" fill="none" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="43" cy="28" r="3" fill="#17324d"/>
+      </svg>
+    </div>
     <div class="brand-text">
       <strong>City Park Waves 📡</strong>
       <span>Parks on the air — closer to home</span>
@@ -701,17 +1117,102 @@
 </header>
 
 <section class="hero app-panel active-panel" id="home">
-  <div class="hero-inner">
-    <div class="hero-badge">🌲 Parks • 📡 Radio • 🧭 Adventure</div>
+  <div class="home-shell">
+    <div class="hero-layout">
+      <div class="hero-copy">
+        <div class="hero-badge">🌲 Parks • 📡 Radio • 🧭 Adventure</div>
 
-    <h1>City Park Waves</h1>
+        <h1>City Park Waves</h1>
 
-    <p>
-      Explore local parks, make contacts, and turn everyday green spaces into radio adventures.
-    </p>
+        <p>
+          Explore local parks, make contacts, and turn everyday green spaces into radio adventures.
+        </p>
 
-    <a class="button primary" href="#parks" data-panel-link="parks">Find a Park</a>
-    <a class="button secondary" href="#activate" data-panel-link="activate">Submit ADIF Log</a>
+        <div class="hero-actions">
+          <a class="button primary" href="#parks" data-panel-link="parks">📍 Find a Park</a>
+          <a class="button secondary" href="#activate" data-panel-link="activate">📡 Submit ADIF Log</a>
+        </div>
+      </div>
+
+      <div class="hero-illustration" aria-hidden="true">
+        <div class="sun-disc"></div>
+        <div class="wave">)))</div>
+        <div class="park-tree">🌳</div>
+        <div class="hero-sign">PARKS + RADIO</div>
+        <div class="antenna-stick"></div>
+        <div class="radio-rig">
+          <div class="radio-screen">CQ</div>
+          <div class="radio-controls"><span></span><span></span><span></span></div>
+        </div>
+        <div class="park-hill"></div>
+      </div>
+    </div>
+
+    <div class="home-actions">
+      <article class="home-action-card green">
+        <div class="home-action-icon">📍</div>
+        <h3>Find Parks</h3>
+        <p>Search near you or explore another city, ZIP code, or county.</p>
+        <a class="home-card-link" href="#parks" data-panel-link="parks">Search Parks →</a>
+      </article>
+
+      <article class="home-action-card blue">
+        <div class="home-action-icon">📡</div>
+        <h3>Activate</h3>
+        <p>Operate from a listed park, then upload your ADIF log afterward.</p>
+        <a class="home-card-link" href="#activate" data-panel-link="activate">Start Activating →</a>
+      </article>
+
+      <article class="home-action-card yellow">
+        <div class="home-action-icon">⭐</div>
+        <h3>My Activations</h3>
+        <p>See your submitted activations, QSO totals, and park history.</p>
+        <a class="home-card-link" href="#my-activations" data-panel-link="my-activations">View Mine →</a>
+      </article>
+
+      <article class="home-action-card coral">
+        <div class="home-action-icon">🌳</div>
+        <h3>Submit Park</h3>
+        <p>Know a public park we're missing? Help grow the database.</p>
+        <a class="home-card-link" href="#submit-park" data-panel-link="submit-park">Add a Park →</a>
+      </article>
+    </div>
+
+    <div class="stats-strip" aria-label="City Park Waves statistics">
+      <div class="stat-item">
+        <div class="stat-icon">🌲</div>
+        <div class="stat-copy">
+          <div class="stat-number" id="homeStatParks">—</div>
+          <div class="stat-label">Active Parks</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-icon">👥</div>
+        <div class="stat-copy">
+          <div class="stat-number" id="homeStatOperators">—</div>
+          <div class="stat-label">Verified Operators</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-icon">📻</div>
+        <div class="stat-copy">
+          <div class="stat-number" id="homeStatActivations">—</div>
+          <div class="stat-label">Park Activations</div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-icon">🌎</div>
+        <div class="stat-copy">
+          <div class="stat-number" id="homeStatQsos">—</div>
+          <div class="stat-label">Logged QSOs</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-tagline">Same hobby. More parks. More reasons to get outside.</div>
   </div>
 </section>
 
@@ -1049,8 +1550,9 @@
 </section>
 
 <footer>
+  <div class="footer-wave">🌲 ))) 📡</div>
   <strong>City Park Waves</strong>
-  <p>Discover parks. Get on the air. Make contacts.</p>
+  <p>Parks on the air — closer to home.</p>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1059,6 +1561,30 @@
   const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const SUPABASE_KEY = "sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo";
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const homeStatParks = document.getElementById("homeStatParks");
+  const homeStatOperators = document.getElementById("homeStatOperators");
+  const homeStatActivations = document.getElementById("homeStatActivations");
+  const homeStatQsos = document.getElementById("homeStatQsos");
+
+  function formatHomeStat(value) {
+    return Number(value || 0).toLocaleString();
+  }
+
+  async function loadHomeStats() {
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_public_stats");
+
+      if (error) throw error;
+
+      homeStatParks.textContent = formatHomeStat(data?.parks);
+      homeStatOperators.textContent = formatHomeStat(data?.operators);
+      homeStatActivations.textContent = formatHomeStat(data?.activations);
+      homeStatQsos.textContent = formatHomeStat(data?.qsos);
+    } catch (error) {
+      console.error("Could not load home statistics:", error);
+    }
+  }
 
   const menuButton = document.getElementById("menuButton");
   const menuPanel = document.getElementById("menuPanel");
@@ -1129,6 +1655,7 @@
   });
 
   showPanel(window.location.hash.slice(1) || "home", false);
+  loadHomeStats();
 
   const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
