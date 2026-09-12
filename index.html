@@ -253,6 +253,7 @@
     <a href="#parks">Find Parks</a>
     <a href="#submit-park">Submit Park</a>
     <a href="#admin-import">Import Parks</a>
+    <a href="#admin-review">Review Parks</a>
     <a href="#activate">Submit Log</a>
     <a href="#my-activations">My Activations</a>
     <a href="#account">Account</a>
@@ -341,6 +342,74 @@
 
     <button id="submitParkButton" style="margin-top:14px;">Submit Park for Review</button>
     <div id="submitParkStatus" style="margin-top:16px;"></div>
+  </div>
+
+</section>
+
+<section class="section" id="admin-review" style="display:none;">
+
+  <h2>Admin: Park Review</h2>
+
+  <p>
+    Review community-submitted parks and clean up existing park records.
+  </p>
+
+  <div class="search">
+    <h3>Pending Park Submissions</h3>
+    <button id="refreshPendingParksButton">Refresh Pending Submissions</button>
+    <div id="pendingParksStatus" style="margin-top:14px;"></div>
+    <div id="pendingParksResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
+  </div>
+
+  <div class="search">
+    <h3>Edit Existing Park</h3>
+
+    <div class="search-row">
+      <input id="adminParkSearch" type="text" placeholder="Search park name, city, state, or ZIP">
+      <button id="adminParkSearchButton">Find Park</button>
+    </div>
+
+    <div id="adminParkSearchStatus" style="margin-top:14px;"></div>
+    <div id="adminParkSearchResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
+
+    <div id="adminParkEditor" style="display:none;margin-top:20px;text-align:left;">
+      <input id="editParkId" type="hidden">
+
+      <label>Park name</label>
+      <input id="editParkName" type="text" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>City</label>
+      <input id="editParkCity" type="text" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>State</label>
+      <input id="editParkState" type="text" maxlength="2" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>County</label>
+      <input id="editParkCounty" type="text" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>ZIP</label>
+      <input id="editParkZip" type="text" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>Address</label>
+      <input id="editParkAddress" type="text" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>Website</label>
+      <input id="editParkWebsite" type="url" style="width:100%;margin:6px 0 12px;padding:10px;">
+
+      <label>Description</label>
+      <textarea id="editParkDescription" style="width:100%;min-height:90px;margin:6px 0 12px;padding:10px;"></textarea>
+
+      <label>
+        <input id="editParkActive" type="checkbox" checked>
+        Active / visible
+      </label>
+
+      <div style="margin-top:16px;">
+        <button id="saveParkChangesButton">Save Park Changes</button>
+      </div>
+
+      <div id="adminParkEditStatus" style="margin-top:14px;"></div>
+    </div>
   </div>
 
 </section>
@@ -571,6 +640,27 @@
   const adminImportSection = document.getElementById("admin-import");
   const startNationwideImportButton = document.getElementById("startNationwideImportButton");
   const nationwideImportStatus = document.getElementById("nationwideImportStatus");
+  const adminReviewSection = document.getElementById("admin-review");
+  const refreshPendingParksButton = document.getElementById("refreshPendingParksButton");
+  const pendingParksStatus = document.getElementById("pendingParksStatus");
+  const pendingParksResults = document.getElementById("pendingParksResults");
+  const adminParkSearch = document.getElementById("adminParkSearch");
+  const adminParkSearchButton = document.getElementById("adminParkSearchButton");
+  const adminParkSearchStatus = document.getElementById("adminParkSearchStatus");
+  const adminParkSearchResults = document.getElementById("adminParkSearchResults");
+  const adminParkEditor = document.getElementById("adminParkEditor");
+  const editParkId = document.getElementById("editParkId");
+  const editParkName = document.getElementById("editParkName");
+  const editParkCity = document.getElementById("editParkCity");
+  const editParkState = document.getElementById("editParkState");
+  const editParkCounty = document.getElementById("editParkCounty");
+  const editParkZip = document.getElementById("editParkZip");
+  const editParkAddress = document.getElementById("editParkAddress");
+  const editParkWebsite = document.getElementById("editParkWebsite");
+  const editParkDescription = document.getElementById("editParkDescription");
+  const editParkActive = document.getElementById("editParkActive");
+  const saveParkChangesButton = document.getElementById("saveParkChangesButton");
+  const adminParkEditStatus = document.getElementById("adminParkEditStatus");
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
@@ -1065,6 +1155,206 @@
 
   submitParkButton.addEventListener("click", submitMissingPark);
 
+  async function loadPendingParkSubmissions() {
+    pendingParksResults.innerHTML = "";
+    pendingParksStatus.textContent = "Loading pending submissions...";
+
+    const { data, error } = await supabaseClient
+      .from("park_submissions")
+      .select("id,name,city,state,county,zip_code,address,park_type,website_url,description,notes,created_at")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      pendingParksStatus.textContent =
+        "Unable to load pending submissions: " + error.message;
+      return;
+    }
+
+    if (!data?.length) {
+      pendingParksStatus.textContent = "No pending park submissions.";
+      return;
+    }
+
+    pendingParksStatus.textContent =
+      `${data.length} pending submission${data.length === 1 ? "" : "s"}.`;
+
+    data.forEach((submission) => {
+      const card = document.createElement("div");
+      card.className = "park-result";
+
+      const location = [
+        submission.city,
+        submission.state,
+        submission.zip_code
+      ].filter(Boolean).join(", ");
+
+      card.innerHTML = `
+        <h3>${escapeHTML(submission.name)}</h3>
+        <p><strong>Location:</strong> ${escapeHTML(location)}</p>
+        ${submission.county ? `<p><strong>County:</strong> ${escapeHTML(submission.county)}</p>` : ""}
+        ${submission.address ? `<p><strong>Address:</strong> ${escapeHTML(submission.address)}</p>` : ""}
+        ${submission.park_type ? `<p><strong>Type:</strong> ${escapeHTML(submission.park_type)}</p>` : ""}
+        ${submission.website_url ? `<p><strong>Website:</strong> ${escapeHTML(submission.website_url)}</p>` : ""}
+        ${submission.description ? `<p>${escapeHTML(submission.description)}</p>` : ""}
+      `;
+
+      const actions = document.createElement("div");
+      actions.style.marginTop = "12px";
+
+      ["approved", "rejected", "duplicate"].forEach((action) => {
+        const button = document.createElement("button");
+        button.textContent =
+          action === "approved" ? "Approve" :
+          action === "rejected" ? "Reject" :
+          "Mark Duplicate";
+        button.style.marginRight = "8px";
+
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+
+          const { error } = await supabaseClient.rpc(
+            "admin_review_park_submission",
+            {
+              p_submission_id: submission.id,
+              p_action: action,
+              p_review_notes: null
+            }
+          );
+
+          if (error) {
+            alert("Review failed: " + error.message);
+            button.disabled = false;
+            return;
+          }
+
+          await loadPendingParkSubmissions();
+        });
+
+        actions.appendChild(button);
+      });
+
+      card.appendChild(actions);
+      pendingParksResults.appendChild(card);
+    });
+  }
+
+  async function adminFindParks() {
+    const term = adminParkSearch.value.trim();
+
+    if (!term) {
+      adminParkSearchStatus.textContent = "Enter a park search term.";
+      adminParkSearchResults.innerHTML = "";
+      return;
+    }
+
+    adminParkSearchStatus.textContent = "Searching...";
+    adminParkSearchResults.innerHTML = "";
+    adminParkEditor.style.display = "none";
+
+    const response = await fetch(
+      `/api/parks?q=${encodeURIComponent(term)}`
+    );
+
+    if (!response.ok) {
+      adminParkSearchStatus.textContent = "Unable to search parks.";
+      return;
+    }
+
+    const parks = await response.json();
+
+    if (!parks.length) {
+      adminParkSearchStatus.textContent = "No matching active parks found.";
+      return;
+    }
+
+    adminParkSearchStatus.textContent =
+      `${parks.length} result${parks.length === 1 ? "" : "s"}.`;
+
+    parks.forEach((park) => {
+      const card = document.createElement("div");
+      card.className = "park-result";
+
+      card.innerHTML = `
+        <h3>${escapeHTML(park.name)}</h3>
+        <p>${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
+      `;
+
+      const button = document.createElement("button");
+      button.textContent = "Edit This Park";
+      button.className = "park-choice";
+
+      button.addEventListener("click", async () => {
+        const { data, error } = await supabaseClient
+          .from("parks")
+          .select("id,name,city,state,county,zip_code,address,website_url,description,is_active")
+          .eq("id", park.id)
+          .single();
+
+        if (error) {
+          adminParkSearchStatus.textContent =
+            "Unable to load park for editing: " + error.message;
+          return;
+        }
+
+        editParkId.value = data.id;
+        editParkName.value = data.name || "";
+        editParkCity.value = data.city || "";
+        editParkState.value = data.state || "";
+        editParkCounty.value = data.county || "";
+        editParkZip.value = data.zip_code || "";
+        editParkAddress.value = data.address || "";
+        editParkWebsite.value = data.website_url || "";
+        editParkDescription.value = data.description || "";
+        editParkActive.checked = Boolean(data.is_active);
+        adminParkEditor.style.display = "block";
+        adminParkEditStatus.textContent = "";
+      });
+
+      card.appendChild(button);
+      adminParkSearchResults.appendChild(card);
+    });
+  }
+
+  async function saveAdminParkChanges() {
+    const id = Number(editParkId.value);
+
+    if (!id) return;
+
+    adminParkEditStatus.textContent = "Saving...";
+
+    const { error } = await supabaseClient
+      .from("parks")
+      .update({
+        name: editParkName.value.trim(),
+        city: editParkCity.value.trim(),
+        state: editParkState.value.trim().toUpperCase(),
+        county: editParkCounty.value.trim() || null,
+        zip_code: editParkZip.value.trim() || null,
+        address: editParkAddress.value.trim() || null,
+        website_url: editParkWebsite.value.trim() || null,
+        description: editParkDescription.value.trim() || null,
+        is_active: editParkActive.checked
+      })
+      .eq("id", id);
+
+    if (error) {
+      adminParkEditStatus.textContent =
+        "Unable to save park: " + error.message;
+      return;
+    }
+
+    adminParkEditStatus.textContent = "✓ Park changes saved.";
+  }
+
+  refreshPendingParksButton.addEventListener("click", loadPendingParkSubmissions);
+  adminParkSearchButton.addEventListener("click", adminFindParks);
+  adminParkSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") adminFindParks();
+  });
+  saveParkChangesButton.addEventListener("click", saveAdminParkChanges);
+
   const US_STATES = [
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
     "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
@@ -1521,6 +1811,7 @@
       signInButton.style.display = "inline-block";
       signOutButton.style.display = "none";
       adminImportSection.style.display = "none";
+      adminReviewSection.style.display = "none";
       return;
     }
 
@@ -1535,6 +1826,11 @@
       .maybeSingle();
 
     adminImportSection.style.display = operator?.is_admin ? "block" : "none";
+    adminReviewSection.style.display = operator?.is_admin ? "block" : "none";
+
+    if (operator?.is_admin) {
+      loadPendingParkSubmissions();
+    }
 
     if (operator?.callsign) {
       accountStatus.textContent =
