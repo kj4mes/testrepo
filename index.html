@@ -2009,7 +2009,7 @@
     <div class="rule-card">
       <h3>🚫 Duplicate Submissions</h3>
       <p>
-        The same activation log should only be submitted once. Duplicate-log detection will be enforced as the system is finalized.
+        The same activation log may only be submitted once for a park. City Park Waves creates a fingerprint from the QSO data and blocks duplicate submissions automatically.
       </p>
     </div>
   </div>
@@ -3529,6 +3529,32 @@
         : `${currentActivationRequirement - parsedAdifRecords.length} more QSO${currentActivationRequirement - parsedAdifRecords.length === 1 ? "" : "s"} needed.`);
   });
 
+  async function activationFingerprint(records, operatorCallsign, parkId) {
+    const normalized = records
+      .map((record) => ({
+        call: String(record.CALL || "").trim().toUpperCase(),
+        date: String(record.QSO_DATE || "").trim(),
+        time: String(record.TIME_ON || "").trim(),
+        band: String(record.BAND || "").trim().toUpperCase(),
+        freq: String(record.FREQ || "").trim(),
+        mode: String(record.SUBMODE || record.MODE || "").trim().toUpperCase()
+      }))
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+
+    const canonical = JSON.stringify({
+      operator: String(operatorCallsign || "").trim().toUpperCase(),
+      park_id: Number(parkId),
+      qsos: normalized
+    });
+
+    const bytes = new TextEncoder().encode(canonical);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
   async function submitActivationLog() {
     activationSubmitStatus.textContent = "";
 
@@ -3601,6 +3627,31 @@
 
     const file = adifFile.files?.[0];
 
+    const logFingerprint = await activationFingerprint(
+      parsedAdifRecords,
+      operator.callsign,
+      selectedActivationPark.id
+    );
+
+    const { data: existingDuplicate, error: duplicateLookupError } =
+      await supabaseClient
+        .from("activations")
+        .select("id,created_at")
+        .eq("auth_user_id", session.user.id)
+        .eq("park_id", selectedActivationPark.id)
+        .eq("log_fingerprint", logFingerprint)
+        .maybeSingle();
+
+    if (duplicateLookupError) {
+      console.error(duplicateLookupError);
+    }
+
+    if (existingDuplicate?.id) {
+      activationSubmitStatus.textContent =
+        "This activation log has already been submitted for this park.";
+      return;
+    }
+
     activationSubmitStatus.textContent =
       "Submitting activation...";
 
@@ -3612,6 +3663,7 @@
         park_id: selectedActivationPark.id,
         station_callsign: operator.callsign,
         source_filename: file?.name || null,
+        log_fingerprint: logFingerprint,
         qso_count: parsedAdifRecords.length,
         first_qso_at: qsoTimes[0] || null,
         last_qso_at: qsoTimes[qsoTimes.length - 1] || null
@@ -3621,8 +3673,18 @@
 
     if (activationError) {
       console.error(activationError);
-      activationSubmitStatus.textContent =
-        "The activation could not be created: " + activationError.message;
+
+      if (
+        String(activationError.code || "") === "23505" ||
+        String(activationError.message || "").toLowerCase().includes("duplicate")
+      ) {
+        activationSubmitStatus.textContent =
+          "This activation log has already been submitted for this park.";
+      } else {
+        activationSubmitStatus.textContent =
+          "The activation could not be created: " + activationError.message;
+      }
+
       return;
     }
 
