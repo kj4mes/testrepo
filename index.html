@@ -1,12 +1,173 @@
-httml
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>City Park Waves</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7f5;
+      color: #1f2933;
+    }
+
+    header {
+      background: #174d36;
+      color: white;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 46px;
+    }
+
+    header p {
+      font-size: 20px;
+      margin-top: 12px;
+    }
+
+    nav {
+      background: #103c2a;
+      padding: 15px;
+      text-align: center;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: bold;
+    }
+
+    .hero {
+      max-width: 1000px;
+      margin: auto;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .hero h2 {
+      font-size: 34px;
+      color: #174d36;
+    }
+
+    .hero p {
+      font-size: 18px;
+      line-height: 1.6;
+      max-width: 700px;
+      margin: 20px auto;
+    }
+
+    .button {
+      display: inline-block;
+      margin: 10px;
+      padding: 14px 24px;
+      background: #d88920;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px 20px 60px;
+    }
+
+    .card {
+      background: white;
+      width: 300px;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    }
+
+    .card h3 {
+      color: #174d36;
+    }
+
+    footer {
+      background: #103c2a;
+      color: white;
+      text-align: center;
+      padding: 25px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>City Park Waves</h1>
-  <p>Discover parks. Get on the air. Make contacts!.</p>
+
+  <header>
+    <h1>City Park Waves</h1>
+    <p>Discover parks. Get on the air. Make contacts.</p>
+  </header>
+
+  <nav>
+    <a href="#">Home</a>
+    <a href="#">Find Parks</a>
+    <a href="#">Activations</a>
+    <a href="#">Log Contacts</a>
+    <a href="#">About</a>
+  </nav>
+
+  <section class="hero">
+    <h2>Take Amateur Radio to Your Local Parks</h2>
+
+    <p>
+      City Park Waves encourages amateur radio operators to get outside,
+      activate local city and community parks, make contacts, and introduce
+      more people to portable amateur radio.
+    </p>
+
+    <a class="button" href="#">Find a Park</a>
+    <a class="button" href="#">Start an Activation</a>
+  </section>
+
+  <section class="features">
+
+    <div class="card">
+      <h3>📍 Find Parks</h3>
+      <p>
+        Discover participating city and community parks and find a great
+        location for your next portable radio activation.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>📡 Activate</h3>
+      <p>
+        Set up your station at a qualifying park, get on the air, and let
+        other operators know where to find you.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>📻 Make Contacts</h3>
+      <p>
+        Work other amateur radio operators using voice, CW, digital modes,
+        or whatever amateur-radio mode you enjoy.
+      </p>
+    </div>
+
+  </section>
+
+  <footer>
+    <p>City Park Waves • Amateur Radio in Your Community</p>
+  </footer>
+
 </body>
 </html>
