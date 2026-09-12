@@ -1053,19 +1053,30 @@
     "VA","WA","WV","WI","WY","DC"
   ];
 
-  async function importPadusState(state) {
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const accessToken = sessionData?.session?.access_token;
+  async function getFreshAccessToken() {
+    const { data: refreshed, error: refreshError } =
+      await supabaseClient.auth.refreshSession();
 
-    if (!accessToken) {
-      throw new Error("Sign in again before starting the import.");
+    if (!refreshError && refreshed?.session?.access_token) {
+      return refreshed.session.access_token;
     }
 
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    return sessionData?.session?.access_token || null;
+  }
+
+  async function importPadusState(state) {
     let offset = 0;
     let total = 0;
 
     while (true) {
-      const response = await fetch("/api/import-padus", {
+      let accessToken = await getFreshAccessToken();
+
+      if (!accessToken) {
+        throw new Error("Your sign-in session expired. Please sign in again.");
+      }
+
+      let response = await fetch("/api/import-padus", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1073,6 +1084,24 @@
         },
         body: JSON.stringify({ state, offset })
       });
+
+      // If the token expired between refresh and request, refresh once and retry.
+      if (response.status === 401) {
+        accessToken = await getFreshAccessToken();
+
+        if (!accessToken) {
+          throw new Error("Your sign-in session expired. Please sign in again.");
+        }
+
+        response = await fetch("/api/import-padus", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ state, offset })
+        });
+      }
 
       const data = await response.json();
 
