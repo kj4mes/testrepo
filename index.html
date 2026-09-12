@@ -219,6 +219,7 @@
 
   <nav>
     <a href="#parks">Find Parks</a>
+    <a href="#submit-park">Submit Park</a>
     <a href="#activate">Submit Log</a>
     <a href="#my-activations">My Activations</a>
     <a href="#account">Account</a>
@@ -263,6 +264,45 @@
     <div id="status"></div>
     <div id="results"></div>
 
+  </div>
+
+</section>
+
+<section class="section" id="submit-park">
+
+  <h2>Submit a Missing Park</h2>
+
+  <p>
+    If a public park is not yet in City Park Waves, submit it for review.
+  </p>
+
+  <div class="search">
+    <div class="search-row">
+      <input id="submitParkName" type="text" placeholder="Park name">
+      <input id="submitParkCity" type="text" placeholder="City">
+    </div>
+
+    <div class="search-row" style="margin-top:10px;">
+      <input id="submitParkState" type="text" placeholder="State (e.g. MI)" maxlength="2">
+      <input id="submitParkZip" type="text" placeholder="ZIP code">
+    </div>
+
+    <div class="search-row" style="margin-top:10px;">
+      <input id="submitParkCounty" type="text" placeholder="County (optional)">
+      <input id="submitParkAddress" type="text" placeholder="Street address (optional)">
+    </div>
+
+    <div class="search-row" style="margin-top:10px;">
+      <input id="submitParkType" type="text" placeholder="Park type (city, township, county...)">
+      <input id="submitParkWebsite" type="url" placeholder="Park website (optional)">
+    </div>
+
+    <div style="margin-top:10px;">
+      <textarea id="submitParkDescription" placeholder="Short description or notes" style="width:100%;min-height:100px;padding:12px;border:1px solid #bbb;border-radius:6px;"></textarea>
+    </div>
+
+    <button id="submitParkButton" style="margin-top:14px;">Submit Park for Review</button>
+    <div id="submitParkStatus" style="margin-top:16px;"></div>
   </div>
 
 </section>
@@ -462,6 +502,17 @@
   const adifPreview = document.getElementById("adifPreview");
   const submitActivationButton = document.getElementById("submitActivationButton");
   const activationSubmitStatus = document.getElementById("activationSubmitStatus");
+  const submitParkName = document.getElementById("submitParkName");
+  const submitParkCity = document.getElementById("submitParkCity");
+  const submitParkState = document.getElementById("submitParkState");
+  const submitParkZip = document.getElementById("submitParkZip");
+  const submitParkCounty = document.getElementById("submitParkCounty");
+  const submitParkAddress = document.getElementById("submitParkAddress");
+  const submitParkType = document.getElementById("submitParkType");
+  const submitParkWebsite = document.getElementById("submitParkWebsite");
+  const submitParkDescription = document.getElementById("submitParkDescription");
+  const submitParkButton = document.getElementById("submitParkButton");
+  const submitParkStatus = document.getElementById("submitParkStatus");
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
@@ -713,6 +764,100 @@
     }
   });
 
+
+  async function submitMissingPark() {
+    submitParkStatus.textContent = "";
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      submitParkStatus.textContent = "Sign in before submitting a park.";
+      return;
+    }
+
+    const name = submitParkName.value.trim();
+    const city = submitParkCity.value.trim();
+    const state = submitParkState.value.trim().toUpperCase();
+    const zip = submitParkZip.value.trim();
+
+    if (!name || !city || state.length !== 2) {
+      submitParkStatus.textContent =
+        "Park name, city, and a 2-letter state code are required.";
+      return;
+    }
+
+    submitParkStatus.textContent = "Checking for possible duplicates...";
+
+    try {
+      const response = await fetch(
+        `/api/parks?q=${encodeURIComponent(name + " " + city + " " + state)}`
+      );
+
+      if (response.ok) {
+        const parks = await response.json();
+
+        const likelyDuplicate = parks.find((park) => {
+          const sameName =
+            String(park.name || "").trim().toLowerCase() === name.toLowerCase();
+          const sameCity =
+            String(park.city || "").trim().toLowerCase() === city.toLowerCase();
+          const sameState =
+            String(park.state || "").trim().toUpperCase() === state;
+
+          return sameName && sameCity && sameState;
+        });
+
+        if (likelyDuplicate) {
+          submitParkStatus.textContent =
+            "That park appears to already be in the database.";
+          return;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    submitParkStatus.textContent = "Submitting park for review...";
+
+    const { error } = await supabaseClient
+      .from("park_submissions")
+      .insert({
+        submitted_by: session.user.id,
+        name,
+        city,
+        state,
+        zip_code: zip || null,
+        county: submitParkCounty.value.trim() || null,
+        address: submitParkAddress.value.trim() || null,
+        park_type: submitParkType.value.trim() || null,
+        website_url: submitParkWebsite.value.trim() || null,
+        description: submitParkDescription.value.trim() || null,
+        status: "pending"
+      });
+
+    if (error) {
+      console.error(error);
+      submitParkStatus.textContent =
+        "Unable to submit the park: " + error.message;
+      return;
+    }
+
+    submitParkStatus.textContent =
+      "✓ Park submitted for review. Thank you for helping grow City Park Waves.";
+
+    submitParkName.value = "";
+    submitParkCity.value = "";
+    submitParkState.value = "";
+    submitParkZip.value = "";
+    submitParkCounty.value = "";
+    submitParkAddress.value = "";
+    submitParkType.value = "";
+    submitParkWebsite.value = "";
+    submitParkDescription.value = "";
+  }
+
+  submitParkButton.addEventListener("click", submitMissingPark);
 
   async function searchActivationParks() {
     const term = activationParkSearch.value.trim();
