@@ -9,14 +9,17 @@ export default async function handler(req, res) {
 
   if (!/^[A-Z0-9]{3,6}$/.test(callsign)) {
     return res.status(400).json({
-      error: "Enter a valid U.S. amateur radio callsign."
+      error: "Enter a valid amateur radio callsign."
     });
   }
 
+  // HamDB provides current amateur-radio license data and links records
+  // back to the FCC ULS. We use its JSON endpoint here because the
+  // older FCC License View API endpoint is currently unreliable.
   const endpoint =
-    "https://data.fcc.gov/api/license-view/basicSearch/getLicenses" +
-    "?searchValue=" + encodeURIComponent(callsign) +
-    "&format=json";
+    "https://api.hamdb.org/" +
+    encodeURIComponent(callsign) +
+    "/json/cityparkwaves";
 
   try {
     const response = await fetch(endpoint, {
@@ -29,8 +32,8 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(502).json({
-        error: "FCC lookup failed.",
-        fcc_status: response.status,
+        error: "Callsign lookup failed.",
+        lookup_status: response.status,
         details: text.slice(0, 300)
       });
     }
@@ -41,29 +44,13 @@ export default async function handler(req, res) {
       data = JSON.parse(text);
     } catch {
       return res.status(502).json({
-        error: "FCC returned an unexpected response."
+        error: "Callsign service returned an unexpected response."
       });
     }
 
-    const licenses = data?.Licenses?.License;
+    const record = data?.hamdb?.callsign;
 
-    const list = Array.isArray(licenses)
-      ? licenses
-      : licenses
-      ? [licenses]
-      : [];
-
-    const exact = list.find((license) => {
-      const returnedCallsign = String(
-        license.callsign ||
-        license.callSign ||
-        ""
-      ).trim().toUpperCase();
-
-      return returnedCallsign === callsign;
-    });
-
-    if (!exact) {
+    if (!record || !record.call) {
       return res.status(200).json({
         callsign,
         found: false,
@@ -73,63 +60,44 @@ export default async function handler(req, res) {
       });
     }
 
-    const statusDesc = String(
-      exact.statusDesc ||
-      exact.status ||
-      ""
-    ).trim();
+    const returnedCallsign = String(record.call).trim().toUpperCase();
 
-    const serviceDesc = String(
-      exact.serviceDesc ||
-      exact.service ||
-      ""
-    ).trim();
+    if (returnedCallsign !== callsign) {
+      return res.status(200).json({
+        callsign,
+        found: false,
+        active: false,
+        verified: false,
+        status: "Not Found"
+      });
+    }
 
-    const serviceCode = String(
-      exact.serviceCode ||
-      exact.radioServiceCode ||
-      ""
-    ).trim().toUpperCase();
-
-    const isAmateur =
-      /amateur/i.test(serviceDesc) ||
-      ["HA", "HV"].includes(serviceCode);
-
-    const isActive =
-      /^active$/i.test(statusDesc) ||
-      String(exact.status || "").trim().toUpperCase() === "A";
-
-    const expiration =
-      exact.expiredDate ||
-      exact.expirationDate ||
-      exact.expDate ||
-      null;
+    const status = String(record.status || "").trim();
+    const active = /^active$/i.test(status);
 
     return res.status(200).json({
       callsign,
       found: true,
-      amateur: isAmateur,
-      active: isAmateur && isActive,
-      verified: isAmateur && isActive,
-      status: statusDesc || (isActive ? "Active" : "Unknown"),
-      service: serviceDesc || serviceCode || null,
-      expiration,
-      licensee_name:
-        exact.licName ||
-        exact.licenseeName ||
-        null,
-      fcc_license_id:
-        exact.licenseID ||
-        exact.uniqueSystemIdentifier ||
-        null,
-      source: "FCC ULS License View"
+      amateur: true,
+      active,
+      verified: active,
+      status: status || "Unknown",
+      service: record.class || null,
+      expiration: record.expires || null,
+      licensee_name: record.fname && record.name
+        ? `${record.fname} ${record.name}`.trim()
+        : (record.name || null),
+      grid: record.grid || null,
+      state: record.state || null,
+      country: record.country || null,
+      source: "HamDB / FCC ULS"
     });
 
   } catch (error) {
-    console.error("FCC callsign lookup failed:", error);
+    console.error("Callsign lookup failed:", error);
 
     return res.status(500).json({
-      error: "Unable to reach the FCC callsign database.",
+      error: "Unable to reach the callsign verification service.",
       details: String(error?.message || error)
     });
   }
