@@ -1197,6 +1197,139 @@
       }
     }
 
+  
+    .activity-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+      gap: 22px;
+      margin-top: 28px;
+      text-align: left;
+    }
+
+    .activity-panel {
+      background: white;
+      border: 1px solid var(--cpw-border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(23,50,77,.07);
+    }
+
+    .activity-panel h3 {
+      margin-top: 0;
+      color: #12344a;
+    }
+
+    .activity-feed-item {
+      padding: 16px 0;
+      border-top: 1px solid #e8eef1;
+    }
+
+    .activity-feed-item:first-child {
+      border-top: 0;
+    }
+
+    .activity-feed-title {
+      font-weight: 900;
+      color: #12344a;
+      margin-bottom: 5px;
+    }
+
+    .activity-feed-meta {
+      color: #617887;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .activity-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .activity-badge {
+      display: inline-block;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #eef8fc;
+      color: #176886;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .leaderboard-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .leaderboard-controls button {
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-weight: 800;
+      cursor: pointer;
+      background: #eef5f7;
+      color: #29485c;
+    }
+
+    .leaderboard-controls button.active {
+      background: var(--cpw-teal);
+      color: white;
+    }
+
+    .leaderboard-row {
+      display: grid;
+      grid-template-columns: 36px minmax(90px,1fr) repeat(3, minmax(54px, auto));
+      gap: 10px;
+      align-items: center;
+      padding: 11px 0;
+      border-top: 1px solid #e8eef1;
+      font-size: 14px;
+    }
+
+    .leaderboard-row:first-child {
+      border-top: 0;
+    }
+
+    .leaderboard-rank {
+      font-weight: 900;
+      color: #0f766e;
+    }
+
+    .leaderboard-call {
+      font-weight: 900;
+      color: #12344a;
+    }
+
+    .leaderboard-number {
+      text-align: right;
+      font-weight: 800;
+      color: #4f6676;
+    }
+
+    .leaderboard-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #78909e;
+      padding-bottom: 8px;
+    }
+
+    @media (max-width: 820px) {
+      .activity-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .leaderboard-row {
+        grid-template-columns: 30px 1fr 46px 46px 52px;
+        gap: 6px;
+        font-size: 12px;
+      }
+    }
+
   </style>
 </head>
 
@@ -1227,6 +1360,7 @@
     <a href="#home" data-panel-link="home">Home</a>
     <a href="#parks" data-panel-link="parks">Find Parks</a>
     <a href="#activate" data-panel-link="activate">Activate</a>
+    <a href="#activity" data-panel-link="activity">Activity</a>
     <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
   </nav>
 
@@ -1243,6 +1377,7 @@
       <a href="#home" data-panel-link="home">Home</a>
       <a href="#parks" data-panel-link="parks">Find Parks</a>
       <a href="#activate" data-panel-link="activate">Submit Activation</a>
+      <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
       <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
       <div class="menu-separator"></div>
       <a href="#submit-park" data-panel-link="submit-park">Submit a Missing Park</a>
@@ -1353,6 +1488,9 @@
     </div>
 
     <div class="home-tagline">Same hobby. More parks. More reasons to get outside.</div>
+    <div style="text-align:center;margin-top:14px;">
+      <a class="button primary" href="#activity" data-panel-link="activity">🔥 See Recent Activity</a>
+    </div>
   </div>
 </section>
 
@@ -1638,6 +1776,41 @@
     <div id="myActivationsResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
   </div>
 
+</section>
+
+<section class="section app-panel" id="activity">
+  <h2>Recent Activity & Leaderboards</h2>
+  <p>
+    See who's putting City Park Waves locations on the air.
+  </p>
+
+  <div class="activity-layout">
+    <div class="activity-panel">
+      <h3>📡 Recent Activations</h3>
+      <div id="publicActivityStatus">Loading recent activity...</div>
+      <div id="publicActivityFeed"></div>
+    </div>
+
+    <div class="activity-panel">
+      <h3>🏆 Leaderboard</h3>
+
+      <div class="leaderboard-controls">
+        <button id="leaderboardMonthButton" type="button">This Month</button>
+        <button id="leaderboardAllButton" type="button" class="active">All Time</button>
+      </div>
+
+      <div class="leaderboard-row leaderboard-header">
+        <div>#</div>
+        <div>Call</div>
+        <div class="leaderboard-number">Parks</div>
+        <div class="leaderboard-number">Acts</div>
+        <div class="leaderboard-number">QSOs</div>
+      </div>
+
+      <div id="leaderboardStatus">Loading leaderboard...</div>
+      <div id="leaderboardResults"></div>
+    </div>
+  </div>
 </section>
 
 <section class="section app-panel" id="account">
@@ -1946,6 +2119,8 @@
   }
 
   loadHomeStats();
+  loadPublicActivity();
+  loadLeaderboard("all");
 
   const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
@@ -2010,6 +2185,12 @@
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
+  const publicActivityStatus = document.getElementById("publicActivityStatus");
+  const publicActivityFeed = document.getElementById("publicActivityFeed");
+  const leaderboardStatus = document.getElementById("leaderboardStatus");
+  const leaderboardResults = document.getElementById("leaderboardResults");
+  const leaderboardMonthButton = document.getElementById("leaderboardMonthButton");
+  const leaderboardAllButton = document.getElementById("leaderboardAllButton");
 
   let selectedActivationPark = null;
   let parsedAdifRecords = [];
@@ -3339,6 +3520,9 @@
     parsedAdifRecords = [];
     adifPreview.textContent = "";
     await loadMyActivations();
+    await loadPublicActivity();
+    await loadLeaderboard("all");
+    await loadHomeStats();
   }
 
   activationParkSearchButton.addEventListener("click", searchActivationParks);
@@ -3346,6 +3530,131 @@
     if (event.key === "Enter") searchActivationParks();
   });
   submitActivationButton.addEventListener("click", submitActivationLog);
+
+  function activityDate(value) {
+    if (!value) return "Date unavailable";
+
+    return new Date(value).toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  async function loadPublicActivity() {
+    publicActivityStatus.textContent = "Loading recent activity...";
+    publicActivityFeed.innerHTML = "";
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_recent_activations", {
+        p_limit: 25
+      });
+
+      if (error) throw error;
+
+      const rows = Array.isArray(data) ? data : [];
+
+      if (!rows.length) {
+        publicActivityStatus.textContent = "No public activations yet.";
+        return;
+      }
+
+      publicActivityStatus.textContent =
+        `${rows.length} recent activation${rows.length === 1 ? "" : "s"}.`;
+
+      rows.forEach((activation) => {
+        const park = activation.park || {};
+        const item = document.createElement("div");
+        item.className = "activity-feed-item";
+
+        const bands = Array.isArray(activation.bands) ? activation.bands.filter(Boolean) : [];
+        const modes = Array.isArray(activation.modes) ? activation.modes.filter(Boolean) : [];
+
+        item.innerHTML = `
+          <div class="activity-feed-title">
+            ${escapeHTML(activation.station_callsign)} activated
+            ${escapeHTML(park.name || "a park")}
+          </div>
+
+          <div class="activity-feed-meta">
+            ${park.reference_code ? escapeHTML(park.reference_code) + " • " : ""}
+            ${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}<br>
+            ${Number(activation.qso_count || 0).toLocaleString()} QSOs •
+            ${escapeHTML(activityDate(activation.activation_at))}
+          </div>
+
+          <div class="activity-badges">
+            ${bands.slice(0, 5).map((band) => `<span class="activity-badge">${escapeHTML(band)}</span>`).join("")}
+            ${modes.slice(0, 5).map((mode) => `<span class="activity-badge">${escapeHTML(mode)}</span>`).join("")}
+          </div>
+
+          ${park.reference_code ? `<button class="park-detail-button" data-public-park-ref="${escapeHTML(park.reference_code)}">Park Details</button>` : ""}
+        `;
+
+        const button = item.querySelector("[data-public-park-ref]");
+        if (button) {
+          button.addEventListener("click", () => openParkDetails(button.dataset.publicParkRef));
+        }
+
+        publicActivityFeed.appendChild(item);
+      });
+
+    } catch (error) {
+      console.error(error);
+      publicActivityStatus.textContent = "Unable to load recent activity.";
+    }
+  }
+
+  async function loadLeaderboard(period = "all") {
+    leaderboardStatus.textContent = "Loading leaderboard...";
+    leaderboardResults.innerHTML = "";
+
+    leaderboardMonthButton.classList.toggle("active", period === "month");
+    leaderboardAllButton.classList.toggle("active", period === "all");
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_leaderboard", {
+        p_period: period,
+        p_limit: 20
+      });
+
+      if (error) throw error;
+
+      const rows = Array.isArray(data) ? data : [];
+
+      if (!rows.length) {
+        leaderboardStatus.textContent =
+          period === "month" ? "No activations yet this month." : "No leaderboard activity yet.";
+        return;
+      }
+
+      leaderboardStatus.textContent = "";
+
+      rows.forEach((operator, index) => {
+        const row = document.createElement("div");
+        row.className = "leaderboard-row";
+
+        row.innerHTML = `
+          <div class="leaderboard-rank">${index + 1}</div>
+          <div class="leaderboard-call">${escapeHTML(operator.callsign)}</div>
+          <div class="leaderboard-number">${Number(operator.unique_parks || 0).toLocaleString()}</div>
+          <div class="leaderboard-number">${Number(operator.activations || 0).toLocaleString()}</div>
+          <div class="leaderboard-number">${Number(operator.qsos || 0).toLocaleString()}</div>
+        `;
+
+        leaderboardResults.appendChild(row);
+      });
+
+    } catch (error) {
+      console.error(error);
+      leaderboardStatus.textContent = "Unable to load leaderboard.";
+    }
+  }
+
+  leaderboardMonthButton.addEventListener("click", () => loadLeaderboard("month"));
+  leaderboardAllButton.addEventListener("click", () => loadLeaderboard("all"));
 
   async function loadMyActivations() {
     myActivationsResults.innerHTML = "";
