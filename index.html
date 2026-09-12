@@ -201,6 +201,7 @@
   <nav>
     <a href="#parks">Find Parks</a>
     <a href="#activate">Activate</a>
+    <a href="#callsign">Verify Callsign</a>
     <a href="#about">About</a>
   </nav>
 </header>
@@ -286,6 +287,35 @@
 
 </section>
 
+<section class="section" id="callsign">
+
+  <h2>Verify Your Callsign</h2>
+
+  <p>
+    Check a U.S. amateur radio callsign against FCC ULS records.
+  </p>
+
+  <div class="search">
+    <div class="search-row">
+      <input
+        id="callsignInput"
+        type="text"
+        placeholder="Enter callsign, e.g. KJ4MES"
+        maxlength="6"
+        autocomplete="off"
+      >
+
+      <button id="callsignButton">
+        Verify Callsign
+      </button>
+    </div>
+
+    <div id="callsignStatus"></div>
+    <div id="callsignResult"></div>
+  </div>
+
+</section>
+
 <section class="section" id="about">
 
   <h2>Every Park Can Make Waves.</h2>
@@ -306,6 +336,10 @@
 
 <script>
   const searchInput = document.getElementById("parkSearch");
+  const callsignInput = document.getElementById("callsignInput");
+  const callsignButton = document.getElementById("callsignButton");
+  const callsignStatus = document.getElementById("callsignStatus");
+  const callsignResult = document.getElementById("callsignResult");
   const searchButton = document.getElementById("searchButton");
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
@@ -385,6 +419,81 @@
   searchInput.addEventListener("keydown", function(event) {
     if (event.key === "Enter") {
       searchParks();
+    }
+  });
+
+  async function verifyCallsign() {
+    const callsign = callsignInput.value.trim().toUpperCase();
+
+    callsignInput.value = callsign;
+    callsignResult.innerHTML = "";
+
+    if (!callsign) {
+      callsignStatus.textContent = "Enter a callsign.";
+      return;
+    }
+
+    callsignStatus.textContent = "Checking FCC records...";
+
+    try {
+      const response = await fetch(
+        `/api/verify-callsign?callsign=${encodeURIComponent(callsign)}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        callsignStatus.textContent =
+          data.error || "Unable to verify callsign.";
+        return;
+      }
+
+      if (!data.found) {
+        callsignStatus.textContent =
+          `${callsign} was not found in the FCC license search.`;
+        return;
+      }
+
+      if (!data.amateur) {
+        callsignStatus.textContent =
+          `${callsign} was found, but it is not an amateur radio license.`;
+        return;
+      }
+
+      if (!data.active) {
+        callsignStatus.textContent =
+          `${callsign} is not currently active.`;
+      } else {
+        callsignStatus.textContent =
+          `✓ ${callsign} is an active amateur radio callsign.`;
+      }
+
+      const card = document.createElement("div");
+      card.className = "park-result";
+
+      card.innerHTML = `
+        <h3>${escapeHTML(data.callsign)}</h3>
+        <p><strong>Status:</strong> ${escapeHTML(data.status || "Unknown")}</p>
+        ${data.service ? `<p><strong>Service:</strong> ${escapeHTML(data.service)}</p>` : ""}
+        ${data.expiration ? `<p><strong>Expiration:</strong> ${escapeHTML(data.expiration)}</p>` : ""}
+        ${data.licensee_name ? `<p><strong>Licensee:</strong> ${escapeHTML(data.licensee_name)}</p>` : ""}
+        <p><strong>Verified:</strong> ${data.verified ? "Yes" : "No"}</p>
+      `;
+
+      callsignResult.appendChild(card);
+
+    } catch (error) {
+      console.error(error);
+      callsignStatus.textContent =
+        "Unable to reach the callsign verification service.";
+    }
+  }
+
+  callsignButton.addEventListener("click", verifyCallsign);
+
+  callsignInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      verifyCallsign();
     }
   });
 </script>
