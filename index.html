@@ -25,21 +25,114 @@
     header {
       background: #173f35;
       color: white;
-      padding: 18px 7%;
+      padding: 12px 5%;
       display: flex;
+      gap: 18px;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1100;
+      box-shadow: 0 2px 10px rgba(0,0,0,.16);
     }
 
     .logo {
-      font-size: 24px;
+      font-size: 22px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .top-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .top-tabs a {
+      color: white;
+      text-decoration: none;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .top-tabs a:hover,
+    .top-tabs a.active {
+      background: rgba(255,255,255,.15);
+    }
+
+    .menu-wrap {
+      position: relative;
+    }
+
+    .menu-button {
+      width: 44px;
+      height: 40px;
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 7px;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .menu-button:hover {
+      background: rgba(255,255,255,.12);
+    }
+
+    .menu-panel {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: 245px;
+      padding: 8px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      z-index: 1200;
+    }
+
+    .menu-panel.open {
+      display: block;
+    }
+
+    .menu-panel a {
+      display: block;
+      padding: 11px 12px;
+      border-radius: 7px;
+      color: #173f35;
+      text-decoration: none;
       font-weight: bold;
     }
 
-    nav a {
-      color: white;
-      text-decoration: none;
-      margin-left: 22px;
+    .menu-panel a:hover {
+      background: #edf5f1;
+    }
+
+    .menu-separator {
+      height: 1px;
+      background: #dfe7e3;
+      margin: 6px 0;
+    }
+
+    .admin-menu-item {
+      display: none !important;
+    }
+
+    body.admin-user .admin-menu-item {
+      display: block !important;
+    }
+
+    .app-panel {
+      display: none !important;
+    }
+
+    .app-panel.active-panel {
+      display: block !important;
     }
 
     .hero {
@@ -224,8 +317,33 @@
         font-size: 36px;
       }
 
-      nav {
+      header {
+        padding: 10px 14px;
+        gap: 10px;
+      }
+
+      .logo {
+        font-size: 18px;
+      }
+
+      .top-tabs {
+        overflow-x: auto;
+        scrollbar-width: none;
+        flex: 1;
+      }
+
+      .top-tabs::-webkit-scrollbar {
         display: none;
+      }
+
+      .top-tabs a {
+        padding: 8px 9px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .hero {
+        padding: 55px 18px;
       }
 
       .search-row {
@@ -249,20 +367,40 @@
 <header>
   <div class="logo">📡 City Park Waves</div>
 
-  <nav>
-    <a href="#parks">Find Parks</a>
-    <a href="#submit-park">Submit Park</a>
-    <a href="#admin-import">Import Parks</a>
-    <a href="#admin-review">Review Parks</a>
-    <a href="#activate">Submit Log</a>
-    <a href="#my-activations">My Activations</a>
-    <a href="#account">Account</a>
-    <a href="#callsign">Verify Callsign</a>
-    <a href="#about">About</a>
+  <nav class="top-tabs" aria-label="Primary navigation">
+    <a href="#home" data-panel-link="home">Home</a>
+    <a href="#parks" data-panel-link="parks">Find Parks</a>
+    <a href="#activate" data-panel-link="activate">Activate</a>
+    <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
   </nav>
+
+  <div class="menu-wrap">
+    <button
+      id="menuButton"
+      class="menu-button"
+      type="button"
+      aria-label="Open menu"
+      aria-expanded="false"
+    >☰</button>
+
+    <nav id="menuPanel" class="menu-panel" aria-label="More navigation">
+      <a href="#home" data-panel-link="home">Home</a>
+      <a href="#parks" data-panel-link="parks">Find Parks</a>
+      <a href="#activate" data-panel-link="activate">Submit Activation</a>
+      <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
+      <div class="menu-separator"></div>
+      <a href="#submit-park" data-panel-link="submit-park">Submit a Missing Park</a>
+      <a href="#account" data-panel-link="account">Account</a>
+      <a href="#callsign" data-panel-link="callsign">Verify Callsign</a>
+      <a href="#about" data-panel-link="about">About</a>
+      <div class="menu-separator admin-menu-item"></div>
+      <a class="admin-menu-item" href="#admin-review" data-panel-link="admin-review">Admin: Review Parks</a>
+      <a class="admin-menu-item" href="#admin-import" data-panel-link="admin-import">Admin: Import Parks</a>
+    </nav>
+  </div>
 </header>
 
-<section class="hero">
+<section class="hero app-panel active-panel" id="home">
   <h1>Take Amateur Radio to the Park.</h1>
 
   <p>
@@ -273,7 +411,7 @@
   <a class="button" href="#activate">Submit ADIF Log</a>
 </section>
 
-<section class="section" id="parks">
+<section class="section app-panel" id="parks">
 
   <h2>Find Parks Near You</h2>
 
@@ -307,7 +445,7 @@
 
 </section>
 
-<section class="section" id="submit-park">
+<section class="section app-panel" id="submit-park">
 
   <h2>Submit a Missing Park</h2>
 
@@ -346,7 +484,7 @@
 
 </section>
 
-<section class="section" id="admin-review" style="display:none;">
+<section class="section app-panel" id="admin-review">
 
   <h2>Admin: Park Review</h2>
 
@@ -425,7 +563,7 @@
 
 </section>
 
-<section class="section" id="admin-import" style="display:none;">
+<section class="section app-panel" id="admin-import">
 
   <h2>Admin: Seed Nationwide Parks</h2>
 
@@ -441,7 +579,7 @@
 
 </section>
 
-<section class="section" id="activate">
+<section class="section app-panel" id="activate">
 
   <h2>Submit a Park Activation</h2>
 
@@ -513,7 +651,7 @@
 
 </section>
 
-<section class="section" id="my-activations">
+<section class="section app-panel" id="my-activations">
 
   <h2>My Activations</h2>
 
@@ -529,7 +667,7 @@
 
 </section>
 
-<section class="section" id="account">
+<section class="section app-panel" id="account">
 
   <h2>Operator Account</h2>
 
@@ -564,7 +702,7 @@
 
 </section>
 
-<section class="section" id="callsign">
+<section class="section app-panel" id="callsign">
 
   <h2>Verify Your Callsign</h2>
 
@@ -593,7 +731,7 @@
 
 </section>
 
-<section class="section" id="about">
+<section class="section app-panel" id="about">
 
   <h2>Every Park Can Make Waves.</h2>
 
@@ -617,6 +755,76 @@
   const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const SUPABASE_KEY = "sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo";
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const menuButton = document.getElementById("menuButton");
+  const menuPanel = document.getElementById("menuPanel");
+  const panelLinks = Array.from(document.querySelectorAll("[data-panel-link]"));
+  const appPanels = Array.from(document.querySelectorAll(".app-panel"));
+  let currentUserIsAdmin = false;
+
+  function showPanel(panelId, updateHash = true) {
+    const adminPanel = panelId === "admin-review" || panelId === "admin-import";
+
+    if (adminPanel && !currentUserIsAdmin) {
+      panelId = "account";
+    }
+
+    const target = document.getElementById(panelId) || document.getElementById("home");
+
+    appPanels.forEach((panel) => {
+      panel.classList.toggle("active-panel", panel === target);
+    });
+
+    panelLinks.forEach((link) => {
+      link.classList.toggle("active", link.dataset.panelLink === target.id);
+    });
+
+    menuPanel.classList.remove("open");
+    menuButton.setAttribute("aria-expanded", "false");
+
+    if (updateHash && window.location.hash !== "#" + target.id) {
+      history.replaceState(null, "", "#" + target.id);
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (target.id === "parks" && nearbyMap) {
+      setTimeout(() => nearbyMap.invalidateSize(), 100);
+    }
+  }
+
+  panelLinks.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      showPanel(link.dataset.panelLink);
+    });
+  });
+
+  menuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = menuPanel.classList.toggle("open");
+    menuButton.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!menuPanel.contains(event.target) && event.target !== menuButton) {
+      menuPanel.classList.remove("open");
+      menuButton.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      menuPanel.classList.remove("open");
+      menuButton.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    showPanel(window.location.hash.slice(1) || "home", false);
+  });
+
+  showPanel(window.location.hash.slice(1) || "home", false);
 
   const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
@@ -2018,8 +2226,12 @@
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
       signOutButton.style.display = "none";
-      adminImportSection.style.display = "none";
-      adminReviewSection.style.display = "none";
+      currentUserIsAdmin = false;
+      document.body.classList.remove("admin-user");
+
+      if (window.location.hash === "#admin-import" || window.location.hash === "#admin-review") {
+        showPanel("account");
+      }
       return;
     }
 
@@ -2033,8 +2245,8 @@
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
-    adminImportSection.style.display = operator?.is_admin ? "block" : "none";
-    adminReviewSection.style.display = operator?.is_admin ? "block" : "none";
+    currentUserIsAdmin = Boolean(operator?.is_admin);
+    document.body.classList.toggle("admin-user", currentUserIsAdmin);
 
     if (operator?.is_admin) {
       loadPendingParkSubmissions();
