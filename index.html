@@ -362,6 +362,16 @@
   </div>
 
   <div class="search">
+    <h3>Data Quality Review</h3>
+    <p>
+      Review imported parks that are missing a usable municipality or otherwise need cleanup.
+    </p>
+    <button id="refreshQualityReviewButton">Refresh Flagged Parks</button>
+    <div id="qualityReviewStatus" style="margin-top:14px;"></div>
+    <div id="qualityReviewResults" style="display:grid;gap:15px;margin-top:20px;text-align:left;"></div>
+  </div>
+
+  <div class="search">
     <h3>Edit Existing Park</h3>
 
     <div class="search-row">
@@ -661,6 +671,9 @@
   const editParkActive = document.getElementById("editParkActive");
   const saveParkChangesButton = document.getElementById("saveParkChangesButton");
   const adminParkEditStatus = document.getElementById("adminParkEditStatus");
+  const refreshQualityReviewButton = document.getElementById("refreshQualityReviewButton");
+  const qualityReviewStatus = document.getElementById("qualityReviewStatus");
+  const qualityReviewResults = document.getElementById("qualityReviewResults");
   const refreshActivationsButton = document.getElementById("refreshActivationsButton");
   const myActivationsStatus = document.getElementById("myActivationsStatus");
   const myActivationsResults = document.getElementById("myActivationsResults");
@@ -1155,6 +1168,121 @@
 
   submitParkButton.addEventListener("click", submitMissingPark);
 
+  function fillParkEditor(data) {
+    editParkId.value = data.id;
+    editParkName.value = data.name || "";
+    editParkCity.value = data.city || "";
+    editParkState.value = data.state || "";
+    editParkCounty.value = data.county || "";
+    editParkZip.value = data.zip_code || "";
+    editParkAddress.value = data.address || "";
+    editParkWebsite.value = data.website_url || "";
+    editParkDescription.value = data.description || "";
+    editParkActive.checked = Boolean(data.is_active);
+    adminParkEditor.style.display = "block";
+    adminParkEditStatus.textContent = "";
+    adminParkEditor.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadQualityReviewParks() {
+    qualityReviewResults.innerHTML = "";
+    qualityReviewStatus.textContent = "Loading flagged parks...";
+
+    const { data, error } = await supabaseClient
+      .from("parks")
+      .select("id,reference_code,name,city,state,county,zip_code,address,website_url,description,is_active,needs_review,data_quality_notes,source_name")
+      .eq("needs_review", true)
+      .order("state", { ascending: true })
+      .order("name", { ascending: true })
+      .limit(100);
+
+    if (error) {
+      console.error(error);
+      qualityReviewStatus.textContent =
+        "Unable to load flagged parks: " + error.message;
+      return;
+    }
+
+    if (!data?.length) {
+      qualityReviewStatus.textContent = "No parks are currently flagged for review.";
+      return;
+    }
+
+    qualityReviewStatus.textContent =
+      `Showing ${data.length} flagged park${data.length === 1 ? "" : "s"}.`;
+
+    data.forEach((park) => {
+      const card = document.createElement("div");
+      card.className = "park-result";
+
+      card.innerHTML = `
+        <h3>${escapeHTML(park.name)}</h3>
+        <p><strong>CPW:</strong> ${escapeHTML(park.reference_code || "Not assigned")}</p>
+        <p><strong>Location:</strong> ${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
+        ${park.data_quality_notes ? `<p><strong>Flag:</strong> ${escapeHTML(park.data_quality_notes)}</p>` : ""}
+        ${park.source_name ? `<p><strong>Source:</strong> ${escapeHTML(park.source_name)}</p>` : ""}
+      `;
+
+      const actions = document.createElement("div");
+      actions.style.marginTop = "12px";
+
+      const editButton = document.createElement("button");
+      editButton.textContent = "Edit";
+      editButton.style.marginRight = "8px";
+      editButton.addEventListener("click", () => fillParkEditor(park));
+
+      const resolveButton = document.createElement("button");
+      resolveButton.textContent = "Mark Resolved";
+      resolveButton.style.marginRight = "8px";
+      resolveButton.addEventListener("click", async () => {
+        const { error } = await supabaseClient
+          .from("parks")
+          .update({
+            needs_review: false,
+            data_quality_notes: null
+          })
+          .eq("id", park.id);
+
+        if (error) {
+          alert("Could not resolve park: " + error.message);
+          return;
+        }
+
+        await loadQualityReviewParks();
+      });
+
+      const deactivateButton = document.createElement("button");
+      deactivateButton.textContent = "Deactivate";
+      deactivateButton.addEventListener("click", async () => {
+        if (!confirm(`Deactivate ${park.name}?`)) return;
+
+        const { error } = await supabaseClient
+          .from("parks")
+          .update({
+            is_active: false,
+            needs_review: false,
+            data_quality_notes: "Deactivated during admin data-quality review."
+          })
+          .eq("id", park.id);
+
+        if (error) {
+          alert("Could not deactivate park: " + error.message);
+          return;
+        }
+
+        await loadQualityReviewParks();
+      });
+
+      actions.appendChild(editButton);
+      actions.appendChild(resolveButton);
+      actions.appendChild(deactivateButton);
+      card.appendChild(actions);
+      qualityReviewResults.appendChild(card);
+    });
+  }
+
+  refreshQualityReviewButton.addEventListener("click", loadQualityReviewParks);
+
   async function loadPendingParkSubmissions() {
     pendingParksResults.innerHTML = "";
     pendingParksStatus.textContent = "Loading pending submissions...";
@@ -1298,18 +1426,7 @@
           return;
         }
 
-        editParkId.value = data.id;
-        editParkName.value = data.name || "";
-        editParkCity.value = data.city || "";
-        editParkState.value = data.state || "";
-        editParkCounty.value = data.county || "";
-        editParkZip.value = data.zip_code || "";
-        editParkAddress.value = data.address || "";
-        editParkWebsite.value = data.website_url || "";
-        editParkDescription.value = data.description || "";
-        editParkActive.checked = Boolean(data.is_active);
-        adminParkEditor.style.display = "block";
-        adminParkEditStatus.textContent = "";
+        fillParkEditor(data);
       });
 
       card.appendChild(button);
@@ -1335,7 +1452,12 @@
         address: editParkAddress.value.trim() || null,
         website_url: editParkWebsite.value.trim() || null,
         description: editParkDescription.value.trim() || null,
-        is_active: editParkActive.checked
+        is_active: editParkActive.checked,
+        needs_review: editParkCity.value.trim().toLowerCase() === "unknown" || !editParkCity.value.trim(),
+        data_quality_notes:
+          editParkCity.value.trim().toLowerCase() === "unknown" || !editParkCity.value.trim()
+            ? "Imported record still needs a usable municipality."
+            : null
       })
       .eq("id", id);
 
@@ -1346,6 +1468,7 @@
     }
 
     adminParkEditStatus.textContent = "✓ Park changes saved.";
+    await loadQualityReviewParks();
   }
 
   refreshPendingParksButton.addEventListener("click", loadPendingParkSubmissions);
@@ -1830,6 +1953,7 @@
 
     if (operator?.is_admin) {
       loadPendingParkSubmissions();
+      loadQualityReviewParks();
     }
 
     if (operator?.callsign) {
