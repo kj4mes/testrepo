@@ -21,6 +21,7 @@ export default async function handler(req, res) {
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
   const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+  const documentedOnly = String(req.query.documented || "") === "1";
 
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return res.status(400).json({ error: "Valid latitude and longitude are required." });
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
       const url =
         SUPABASE_URL +
         "/rest/v1/parks" +
-        "?select=id,reference_code,name,city,state,zip_code,park_type,latitude,longitude,source_name" +
+        "?select=id,reference_code,name,city,state,zip_code,park_type,latitude,longitude,source_name,website_url,photo_url" +
         "&is_active=eq.true" +
         "&latitude=not.is.null" +
         "&longitude=not.is.null" +
@@ -47,6 +48,7 @@ export default async function handler(req, res) {
         "&latitude=lte." + encodeURIComponent(maxLat) +
         "&longitude=gte." + encodeURIComponent(minLon) +
         "&longitude=lte." + encodeURIComponent(maxLon) +
+        (documentedOnly ? "&or=(website_url.not.is.null,photo_url.not.is.null)" : "") +
         "&limit=500";
 
       const response = await fetch(url, {
