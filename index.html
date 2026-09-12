@@ -3555,6 +3555,13 @@
       .join("");
   }
 
+  function normalizeOperatorCallsign(value) {
+    return String(value || "")
+      .trim()
+      .toUpperCase()
+      .split("/")[0];
+  }
+
   async function submitActivationLog() {
     activationSubmitStatus.textContent = "";
 
@@ -3569,13 +3576,17 @@
 
     const { data: operator, error: operatorError } = await supabaseClient
       .from("operators")
-      .select("id,callsign,callsign_verified,license_class")
+      .select("id,callsign,callsign_verified,callsign_status,license_class,license_expiration")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
-    if (operatorError || !operator?.callsign_verified) {
+    if (
+      operatorError ||
+      !operator?.callsign_verified ||
+      String(operator?.callsign_status || "").toLowerCase() !== "active"
+    ) {
       activationSubmitStatus.textContent =
-        "Verify your callsign before submitting an activation.";
+        "A verified, active amateur radio callsign is required before submitting an activation.";
       return;
     }
 
@@ -3591,107 +3602,42 @@
       return;
     }
 
-    const requiredQsos = requiredQsosForLicenseClass(operator.license_class);
-
-    if (parsedAdifRecords.length < requiredQsos) {
-      const shortBy = requiredQsos - parsedAdifRecords.length;
-      activationSubmitStatus.textContent =
-        `${operator.license_class || "Unknown"} class requires at least ${requiredQsos} valid QSOs. This log has ${parsedAdifRecords.length}; ${shortBy} more needed.`;
-      return;
-    }
-
     const stationCalls = new Set(
       parsedAdifRecords
-        .map(r => (r.STATION_CALLSIGN || r.OPERATOR || "").toUpperCase())
+        .map((record) =>
+          String(record.STATION_CALLSIGN || record.OPERATOR || "")
+            .trim()
+            .toUpperCase()
+        )
         .filter(Boolean)
     );
 
     if (stationCalls.size > 1) {
-      activationSubmitStatus.textContent =
-        "This ADIF file contains more than one station/operator callsign.";
-      return;
+      const normalizedCalls = new Set(
+        [...stationCalls].map(normalizeOperatorCallsign)
+      );
+
+      if (normalizedCalls.size > 1) {
+        activationSubmitStatus.textContent =
+          "This ADIF file contains more than one station/operator callsign.";
+        return;
+      }
     }
 
     const logStationCall = [...stationCalls][0] || operator.callsign;
 
-    if (logStationCall !== operator.callsign) {
+    if (
+      normalizeOperatorCallsign(logStationCall) !==
+      normalizeOperatorCallsign(operator.callsign)
+    ) {
       activationSubmitStatus.textContent =
-        `The ADIF station callsign (${logStationCall}) does not match your verified callsign (${operator.callsign}).`;
+        `The ADIF station callsign (${logStationCall}) does not match your verified callsign (${operator.callsign}). Portable suffixes such as /P are allowed.`;
       return;
     }
 
-    const qsoTimes = parsedAdifRecords
-      .map(adifDateTime)
-      .filter(Boolean)
-      .sort();
-
-    const file = adifFile.files?.[0];
-
-    const logFingerprint = await activationFingerprint(
-      parsedAdifRecords,
-      operator.callsign,
-      selectedActivationPark.id
-    );
-
-    const { data: existingDuplicate, error: duplicateLookupError } =
-      await supabaseClient
-        .from("activations")
-        .select("id,created_at")
-        .eq("auth_user_id", session.user.id)
-        .eq("park_id", selectedActivationPark.id)
-        .eq("log_fingerprint", logFingerprint)
-        .maybeSingle();
-
-    if (duplicateLookupError) {
-      console.error(duplicateLookupError);
-    }
-
-    if (existingDuplicate?.id) {
-      activationSubmitStatus.textContent =
-        "This activation log has already been submitted for this park.";
-      return;
-    }
-
-    activationSubmitStatus.textContent =
-      "Submitting activation...";
-
-    const { data: activation, error: activationError } = await supabaseClient
-      .from("activations")
-      .insert({
-        auth_user_id: session.user.id,
-        operator_id: operator.id,
-        park_id: selectedActivationPark.id,
-        station_callsign: operator.callsign,
-        source_filename: file?.name || null,
-        log_fingerprint: logFingerprint,
-        qso_count: parsedAdifRecords.length,
-        first_qso_at: qsoTimes[0] || null,
-        last_qso_at: qsoTimes[qsoTimes.length - 1] || null
-      })
-      .select("id")
-      .single();
-
-    if (activationError) {
-      console.error(activationError);
-
-      if (
-        String(activationError.code || "") === "23505" ||
-        String(activationError.message || "").toLowerCase().includes("duplicate")
-      ) {
-        activationSubmitStatus.textContent =
-          "This activation log has already been submitted for this park.";
-      } else {
-        activationSubmitStatus.textContent =
-          "The activation could not be created: " + activationError.message;
-      }
-
-      return;
-    }
-
-    const rows = parsedAdifRecords.map((record) => ({
-      activation_id: activation.id,
+    const qsoPayload = parsedAdifRecords.map((record) => ({
       qso_datetime: adifDateTime(record),
-      contacted_callsign: (record.CALL || "").toUpperCase(),
+      contacted_callsign: String(record.CALL || "").trim().toUpperCase(),
       band: record.BAND || null,
       frequency_mhz: record.FREQ ? Number(record.FREQ) || null : null,
       mode: record.SUBMODE || record.MODE || null,
@@ -3701,28 +3647,57 @@
       raw_adif: record
     }));
 
-    const chunkSize = 250;
+    activationSubmitStatus.textContent =
+      "Validating and submitting activation securely...";
 
-    for (let i = 0; i < rows.length; i += chunkSize) {
-      const { error: qsoError } = await supabaseClient
-        .from("activation_qsos")
-        .insert(rows.slice(i, i + chunkSize));
+    const file = adifFile.files?.[0];
 
-      if (qsoError) {
-        console.error(qsoError);
-        activationSubmitStatus.textContent =
-          "The activation was created, but some QSOs could not be saved: " +
-          qsoError.message;
-        return;
+    const { data: result, error: submitError } = await supabaseClient.rpc(
+      "submit_cpw_activation",
+      {
+        p_park_id: selectedActivationPark.id,
+        p_source_filename: file?.name || null,
+        p_log_station_callsign: logStationCall,
+        p_qsos: qsoPayload
       }
+    );
+
+    if (submitError) {
+      console.error(submitError);
+
+      const message = String(submitError.message || "");
+
+      if (message.toLowerCase().includes("already been submitted")) {
+        activationSubmitStatus.textContent =
+          "This activation log has already been submitted for this park.";
+      } else if (message.toLowerCase().includes("requires at least")) {
+        activationSubmitStatus.textContent = message;
+      } else if (message.toLowerCase().includes("date/time")) {
+        activationSubmitStatus.textContent =
+          "The log contains at least one QSO with a missing, invalid, or future date/time.";
+      } else if (message.toLowerCase().includes("callsign")) {
+        activationSubmitStatus.textContent = message;
+      } else {
+        activationSubmitStatus.textContent =
+          "The activation could not be submitted: " + message;
+      }
+
+      return;
     }
 
+    const qsoCount = Number(result?.qso_count || parsedAdifRecords.length);
+    const requiredQsos = Number(
+      result?.required_qsos ||
+      requiredQsosForLicenseClass(operator.license_class)
+    );
+
     activationSubmitStatus.textContent =
-      `✓ Activation submitted for ${selectedActivationPark.name}: ${rows.length} QSO${rows.length === 1 ? "" : "s"} logged under ${operator.callsign} (${operator.license_class || "Unknown"} class; ${requiredQsos} required).`;
+      `✓ Activation submitted for ${result?.park_name || selectedActivationPark.name}: ${qsoCount} QSO${qsoCount === 1 ? "" : "s"} logged under ${result?.callsign || operator.callsign} (${result?.license_class || operator.license_class} class; ${requiredQsos} required).`;
 
     adifFile.value = "";
     parsedAdifRecords = [];
     adifPreview.textContent = "";
+
     await loadMyActivations();
     await loadPublicActivity();
     await loadLeaderboard("all");
