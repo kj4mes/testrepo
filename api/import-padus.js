@@ -132,8 +132,14 @@ export default async function handler(req, res) {
       .map((feature) => {
         const a = feature.attributes || {};
         const name = parkName(a);
+        const city = deriveCity(a);
 
         if (!name) return null;
+
+        // Skip PAD-US records that do not provide a usable municipality.
+        if (!city || city.trim().toLowerCase() === "unknown") {
+          return null;
+        }
 
         const centroid = feature.centroid || {};
         const latitude =
@@ -143,7 +149,7 @@ export default async function handler(req, res) {
 
         return {
           name,
-          city: deriveCity(a),
+          city,
           state,
           latitude,
           longitude,
