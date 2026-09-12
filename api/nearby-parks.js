@@ -21,7 +21,9 @@ export default async function handler(req, res) {
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
   const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
-  const documentedOnly = String(req.query.documented || "") === "1";
+  const quality = String(req.query.quality || "all").toLowerCase();
+  const allowedQuality = new Set(["all", "documented", "media", "activated"]);
+  const qualityFilter = allowedQuality.has(quality) ? quality : "all";
 
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return res.status(400).json({ error: "Valid latitude and longitude are required." });
@@ -40,7 +42,7 @@ export default async function handler(req, res) {
       const url =
         SUPABASE_URL +
         "/rest/v1/parks" +
-        "?select=id,reference_code,name,city,state,zip_code,park_type,latitude,longitude,source_name,website_url,photo_url" +
+        "?select=id,reference_code,name,city,state,zip_code,park_type,latitude,longitude,source_name,website_url,photo_url,address,description,activations(count)" +
         "&is_active=eq.true" +
         "&latitude=not.is.null" +
         "&longitude=not.is.null" +
@@ -48,7 +50,6 @@ export default async function handler(req, res) {
         "&latitude=lte." + encodeURIComponent(maxLat) +
         "&longitude=gte." + encodeURIComponent(minLon) +
         "&longitude=lte." + encodeURIComponent(maxLon) +
-        (documentedOnly ? "&or=(website_url.not.is.null,photo_url.not.is.null)" : "") +
         "&limit=500";
 
       const response = await fetch(url, {
@@ -74,15 +75,47 @@ export default async function handler(req, res) {
     }
 
     const results = parks
-      .map((park) => ({
-        ...park,
-        distance_miles: distanceMiles(
-          lat,
-          lon,
-          Number(park.latitude),
-          Number(park.longitude)
-        )
-      }))
+      .map((park) => {
+        const activationCount = Number(park.activations?.[0]?.count || 0);
+        const hasWebsite = Boolean(String(park.website_url || "").trim());
+        const hasPhoto = Boolean(String(park.photo_url || "").trim());
+        const hasAddress = Boolean(String(park.address || "").trim());
+        const hasDescription = Boolean(String(park.description || "").trim());
+
+        const documentationScore =
+          (hasWebsite ? 1 : 0) +
+          (hasPhoto ? 1 : 0) +
+          (hasAddress ? 1 : 0) +
+          (hasDescription ? 1 : 0) +
+          (activationCount > 0 ? 1 : 0);
+
+        return {
+          ...park,
+          activation_count: activationCount,
+          documentation_score: documentationScore,
+          distance_miles: distanceMiles(
+            lat,
+            lon,
+            Number(park.latitude),
+            Number(park.longitude)
+          )
+        };
+      })
+      .filter((park) => {
+        if (qualityFilter === "media") {
+          return Boolean(park.website_url || park.photo_url);
+        }
+
+        if (qualityFilter === "activated") {
+          return park.activation_count > 0;
+        }
+
+        if (qualityFilter === "documented") {
+          return park.documentation_score >= 1;
+        }
+
+        return true;
+      })
       .sort((a, b) => a.distance_miles - b.distance_miles)
       .slice(0, limit);
 
