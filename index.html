@@ -142,6 +142,25 @@
       margin: 5px 0;
     }
 
+    .park-choice {
+      margin-top: 10px;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #28745f;
+      color: white;
+      cursor: pointer;
+    }
+
+    .selected-park {
+      background: #eaf6f1;
+      border: 1px solid #28745f;
+      border-radius: 7px;
+      padding: 12px;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -200,7 +219,7 @@
 
   <nav>
     <a href="#parks">Find Parks</a>
-    <a href="#activate">Activate</a>
+    <a href="#activate">Submit Log</a>
     <a href="#account">Account</a>
     <a href="#callsign">Verify Callsign</a>
     <a href="#about">About</a>
@@ -211,12 +230,11 @@
   <h1>Take Amateur Radio to the Park.</h1>
 
   <p>
-    Discover local parks, plan an activation, get on the air,
-    and make contacts.
+    Discover local parks, get on the air, and submit your activation log afterward.
   </p>
 
   <a class="button" href="#parks">Find a Park</a>
-  <a class="button" href="#activate">Plan an Activation</a>
+  <a class="button" href="#activate">Submit ADIF Log</a>
 </section>
 
 <section class="section" id="parks">
@@ -250,40 +268,72 @@
 
 <section class="section" id="activate">
 
-  <h2>How City Park Waves Works</h2>
+  <h2>Submit a Park Activation</h2>
+
+  <p>
+    No scheduling required. Operate from a listed park, then upload your ADIF log.
+    You must be signed in with a verified callsign.
+  </p>
+
+  <div class="search">
+    <h3>1. Choose the park</h3>
+
+    <div class="search-row">
+      <input
+        id="activationParkSearch"
+        type="text"
+        placeholder="Search park name, city, state, or ZIP"
+      >
+      <button id="activationParkSearchButton">Find Park</button>
+    </div>
+
+    <div id="activationParkStatus" style="margin-top:14px;"></div>
+    <div id="activationParkResults"></div>
+  </div>
+
+  <div class="search">
+    <h3>2. Upload your ADIF log</h3>
+
+    <p>
+      Accepted file types: <strong>.adi</strong> and <strong>.adif</strong>.
+      The log must contain at least one QSO.
+    </p>
+
+    <input
+      id="adifFile"
+      type="file"
+      accept=".adi,.adif,text/plain"
+    >
+
+    <div id="adifPreview" style="margin-top:16px;"></div>
+
+    <button id="submitActivationButton" style="margin-top:16px;">
+      Submit Activation Log
+    </button>
+
+    <div id="activationSubmitStatus" style="margin-top:16px;"></div>
+  </div>
 
   <div class="cards">
-
     <div class="card">
-      <h3>🌳 1. Find a Park</h3>
-      <p>
-        Discover nearby city and community parks suitable
-        for portable amateur radio.
-      </p>
+      <h3>🌳 1. Pick a Park</h3>
+      <p>Choose the park where you operated.</p>
     </div>
 
     <div class="card">
-      <h3>📅 2. Plan an Activation</h3>
-      <p>
-        Announce where and when you'll be operating so other
-        hams know to listen for you.
-      </p>
+      <h3>📡 2. Get on the Air</h3>
+      <p>Operate whenever you want. No advance scheduling is required.</p>
     </div>
 
     <div class="card">
-      <h3>📡 3. Get on the Air</h3>
-      <p>
-        Set up your portable station and call CQ from the park.
-      </p>
+      <h3>📝 3. Export ADIF</h3>
+      <p>Export an ADIF log from your logging program.</p>
     </div>
 
     <div class="card">
-      <h3>🤝 4. Make Contacts</h3>
-      <p>
-        Log your contacts and help put local parks on the air.
-      </p>
+      <h3>✅ 4. Submit</h3>
+      <p>Your verified callsign and contacts are recorded as the activation.</p>
     </div>
-
   </div>
 
 </section>
@@ -387,6 +437,17 @@
   const signInButton = document.getElementById("signInButton");
   const signOutButton = document.getElementById("signOutButton");
   const accountStatus = document.getElementById("accountStatus");
+  const activationParkSearch = document.getElementById("activationParkSearch");
+  const activationParkSearchButton = document.getElementById("activationParkSearchButton");
+  const activationParkStatus = document.getElementById("activationParkStatus");
+  const activationParkResults = document.getElementById("activationParkResults");
+  const adifFile = document.getElementById("adifFile");
+  const adifPreview = document.getElementById("adifPreview");
+  const submitActivationButton = document.getElementById("submitActivationButton");
+  const activationSubmitStatus = document.getElementById("activationSubmitStatus");
+
+  let selectedActivationPark = null;
+  let parsedAdifRecords = [];
   const searchButton = document.getElementById("searchButton");
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
@@ -578,6 +639,267 @@
       verifyCallsign();
     }
   });
+
+
+  async function searchActivationParks() {
+    const term = activationParkSearch.value.trim();
+
+    if (!term) {
+      activationParkStatus.textContent = "Enter a park name, city, state, or ZIP code.";
+      activationParkResults.innerHTML = "";
+      return;
+    }
+
+    activationParkStatus.textContent = "Searching parks...";
+    activationParkResults.innerHTML = "";
+
+    try {
+      const response = await fetch(`/api/parks?q=${encodeURIComponent(term)}`);
+
+      if (!response.ok) {
+        activationParkStatus.textContent = "Unable to search parks.";
+        return;
+      }
+
+      const parks = await response.json();
+
+      if (!parks.length) {
+        activationParkStatus.textContent = "No matching parks found.";
+        return;
+      }
+
+      activationParkStatus.textContent = "Choose the park you activated.";
+
+      parks.forEach((park) => {
+        const card = document.createElement("div");
+        card.className = "park-result";
+
+        const location = [park.city, park.state, park.zip_code]
+          .filter(Boolean)
+          .join(", ");
+
+        card.innerHTML = `
+          <h3>${escapeHTML(park.name)}</h3>
+          <p>${escapeHTML(location)}</p>
+        `;
+
+        const button = document.createElement("button");
+        button.className = "park-choice";
+        button.textContent = "Use This Park";
+
+        button.addEventListener("click", () => {
+          selectedActivationPark = park;
+          activationParkResults.innerHTML = "";
+          activationParkStatus.innerHTML =
+            `<div class="selected-park">Selected: ${escapeHTML(park.name)} — ${escapeHTML(location)}</div>`;
+        });
+
+        card.appendChild(button);
+        activationParkResults.appendChild(card);
+      });
+
+    } catch (error) {
+      console.error(error);
+      activationParkStatus.textContent = "Unable to search parks.";
+    }
+  }
+
+  function parseAdif(text) {
+    const records = [];
+    const parts = text.split(/<EOR>/i);
+
+    for (const part of parts) {
+      if (!part.trim()) continue;
+
+      const record = {};
+      const regex = /<([A-Z0-9_]+):(\d+)(?::[^>]*)?>([^<]*)/gi;
+      let match;
+
+      while ((match = regex.exec(part)) !== null) {
+        const field = match[1].toUpperCase();
+        const length = Number(match[2]);
+        record[field] = match[3].slice(0, length).trim();
+      }
+
+      if (record.CALL) {
+        records.push(record);
+      }
+    }
+
+    return records;
+  }
+
+  function adifDateTime(record) {
+    const date = record.QSO_DATE;
+    const time = (record.TIME_ON || "").padEnd(6, "0").slice(0, 6);
+
+    if (!date || date.length !== 8) return null;
+
+    const year = date.slice(0, 4);
+    const month = date.slice(4, 6);
+    const day = date.slice(6, 8);
+    const hour = time.slice(0, 2) || "00";
+    const minute = time.slice(2, 4) || "00";
+    const second = time.slice(4, 6) || "00";
+
+    const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+    const parsed = new Date(iso);
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  adifFile.addEventListener("change", async () => {
+    parsedAdifRecords = [];
+    adifPreview.textContent = "";
+
+    const file = adifFile.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    parsedAdifRecords = parseAdif(text);
+
+    if (!parsedAdifRecords.length) {
+      adifPreview.textContent = "No QSO records were found in that ADIF file.";
+      return;
+    }
+
+    const first = parsedAdifRecords[0];
+    const stationCall =
+      (first.STATION_CALLSIGN || first.OPERATOR || "").toUpperCase();
+
+    adifPreview.textContent =
+      `Found ${parsedAdifRecords.length} QSO${parsedAdifRecords.length === 1 ? "" : "s"}` +
+      (stationCall ? ` for station ${stationCall}.` : ".");
+  });
+
+  async function submitActivationLog() {
+    activationSubmitStatus.textContent = "";
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      activationSubmitStatus.textContent =
+        "Sign in to your operator account before submitting a log.";
+      return;
+    }
+
+    const { data: operator, error: operatorError } = await supabaseClient
+      .from("operators")
+      .select("id,callsign,callsign_verified")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    if (operatorError || !operator?.callsign_verified) {
+      activationSubmitStatus.textContent =
+        "Verify your callsign before submitting an activation.";
+      return;
+    }
+
+    if (!selectedActivationPark) {
+      activationSubmitStatus.textContent = "Choose the park you activated.";
+      return;
+    }
+
+    if (!parsedAdifRecords.length) {
+      activationSubmitStatus.textContent = "Choose a valid ADIF file.";
+      return;
+    }
+
+    const stationCalls = new Set(
+      parsedAdifRecords
+        .map(r => (r.STATION_CALLSIGN || r.OPERATOR || "").toUpperCase())
+        .filter(Boolean)
+    );
+
+    if (stationCalls.size > 1) {
+      activationSubmitStatus.textContent =
+        "This ADIF file contains more than one station/operator callsign.";
+      return;
+    }
+
+    const logStationCall = [...stationCalls][0] || operator.callsign;
+
+    if (logStationCall !== operator.callsign) {
+      activationSubmitStatus.textContent =
+        `The ADIF station callsign (${logStationCall}) does not match your verified callsign (${operator.callsign}).`;
+      return;
+    }
+
+    const qsoTimes = parsedAdifRecords
+      .map(adifDateTime)
+      .filter(Boolean)
+      .sort();
+
+    const file = adifFile.files?.[0];
+
+    activationSubmitStatus.textContent =
+      "Submitting activation...";
+
+    const { data: activation, error: activationError } = await supabaseClient
+      .from("activations")
+      .insert({
+        auth_user_id: session.user.id,
+        operator_id: operator.id,
+        park_id: selectedActivationPark.id,
+        station_callsign: operator.callsign,
+        source_filename: file?.name || null,
+        qso_count: parsedAdifRecords.length,
+        first_qso_at: qsoTimes[0] || null,
+        last_qso_at: qsoTimes[qsoTimes.length - 1] || null
+      })
+      .select("id")
+      .single();
+
+    if (activationError) {
+      console.error(activationError);
+      activationSubmitStatus.textContent =
+        "The activation could not be created: " + activationError.message;
+      return;
+    }
+
+    const rows = parsedAdifRecords.map((record) => ({
+      activation_id: activation.id,
+      qso_datetime: adifDateTime(record),
+      contacted_callsign: (record.CALL || "").toUpperCase(),
+      band: record.BAND || null,
+      frequency_mhz: record.FREQ ? Number(record.FREQ) || null : null,
+      mode: record.SUBMODE || record.MODE || null,
+      rst_sent: record.RST_SENT || null,
+      rst_received: record.RST_RCVD || null,
+      grid_square: record.GRIDSQUARE || null,
+      raw_adif: record
+    }));
+
+    const chunkSize = 250;
+
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const { error: qsoError } = await supabaseClient
+        .from("activation_qsos")
+        .insert(rows.slice(i, i + chunkSize));
+
+      if (qsoError) {
+        console.error(qsoError);
+        activationSubmitStatus.textContent =
+          "The activation was created, but some QSOs could not be saved: " +
+          qsoError.message;
+        return;
+      }
+    }
+
+    activationSubmitStatus.textContent =
+      `✓ Activation submitted for ${selectedActivationPark.name}: ${rows.length} QSO${rows.length === 1 ? "" : "s"} logged under ${operator.callsign}.`;
+
+    adifFile.value = "";
+    parsedAdifRecords = [];
+    adifPreview.textContent = "";
+  }
+
+  activationParkSearchButton.addEventListener("click", searchActivationParks);
+  activationParkSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") searchActivationParks();
+  });
+  submitActivationButton.addEventListener("click", submitActivationLog);
 
   async function refreshAccountStatus() {
     const { data } = await supabaseClient.auth.getSession();
