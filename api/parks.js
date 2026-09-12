@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const SUPABASE_URL = "https://ppxvqtnzncsyttfegdd.supabase.co";
+  const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const SUPABASE_KEY = "sb_publishable_pOQ38QcleCUtLHeGWdb0RQ_nqvgkaxo";
 
   const q = String(req.query.q || "").trim().toLowerCase();
