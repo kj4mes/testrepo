@@ -126,10 +126,13 @@
     }
 
     #nearbyMap {
-      height: 430px;
+      height: 360px;
+      width: 100%;
       border-radius: 10px;
       margin-top: 20px;
       overflow: hidden;
+      border: 1px solid #d7dedb;
+      background: #e9efec;
     }
 
     #nearbyResults {
@@ -593,28 +596,31 @@
   let nearbyLayer = null;
 
   function ensureNearbyMap(lat, lon) {
-    if (!nearbyMap) {
-      nearbyMap = L.map("nearbyMap").setView([lat, lon], 11);
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(nearbyMap);
-    } else {
-      nearbyMap.setView([lat, lon], 11);
+    if (nearbyMap) {
+      nearbyMap.remove();
+      nearbyMap = null;
+      nearbyLayer = null;
     }
 
-    if (nearbyLayer) {
-      nearbyLayer.clearLayers();
-    } else {
-      nearbyLayer = L.layerGroup().addTo(nearbyMap);
-    }
+    nearbyMap = L.map("nearbyMap", {
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false
+    }).setView([lat, lon], 11);
 
-    L.circleMarker([lat, lon], {
-      radius: 8
-    })
-      .bindPopup("Your location")
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(nearbyMap);
+
+    nearbyLayer = L.layerGroup().addTo(nearbyMap);
+
+    L.marker([lat, lon])
+      .bindPopup("<strong>Your location</strong>")
       .addTo(nearbyLayer);
+
+    setTimeout(() => nearbyMap.invalidateSize(), 100);
   }
 
   async function findNearbyParks() {
@@ -674,8 +680,7 @@
               L.marker([plat, plon])
                 .bindPopup(
                   `<strong>${escapeHTML(park.name)}</strong><br>` +
-                  `${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}<br>` +
-                  `${Number(park.distance_miles).toFixed(1)} miles away`
+                  `${Number(park.distance_miles).toFixed(1)} mi away`
                 )
                 .addTo(nearbyLayer);
             }
@@ -700,7 +705,11 @@
           });
 
           if (bounds.length > 1) {
-            nearbyMap.fitBounds(bounds, { padding: [25, 25] });
+            nearbyMap.fitBounds(bounds, {
+              padding: [30, 30],
+              maxZoom: 12
+            });
+            setTimeout(() => nearbyMap.invalidateSize(), 100);
           }
 
         } catch (error) {
