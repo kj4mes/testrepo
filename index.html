@@ -73,6 +73,7 @@
       <a href="#feedback" data-panel-link="feedback">Suggestions & Feedback</a>
       <a href="#about" data-panel-link="about">About</a>
       <div class="menu-separator admin-menu-item"></div>
+      <a class="admin-menu-item" href="#admin-users" data-panel-link="admin-users">Admin: User Management</a>
       <a class="admin-menu-item" href="#admin-review" data-panel-link="admin-review">Admin: Review Parks</a>
       <a class="admin-menu-item" href="#admin-import" data-panel-link="admin-import">Admin: Import Parks</a>
     </nav>
@@ -275,6 +276,32 @@
     <div id="submitParkStatus" style="margin-top:16px;"></div>
   </div>
 
+</section>
+
+<section class="section app-panel" id="admin-users">
+  <div class="admin-users-shell">
+    <div class="admin-users-heading">
+      <div>
+        <div class="dashboard-kicker">Administration</div>
+        <h2>User Management</h2>
+        <p>Review beta accounts, operator verification status, and administrative access.</p>
+      </div>
+      <button id="refreshAdminUsersButton" type="button">Refresh Users</button>
+    </div>
+
+    <div class="admin-users-summary">
+      <div><strong id="adminUserCount">0</strong><span>Total Users</span></div>
+      <div><strong id="adminVerifiedCount">0</strong><span>Verified Operators</span></div>
+      <div><strong id="adminAdminCount">0</strong><span>Admins</span></div>
+    </div>
+
+    <div class="admin-users-notice">
+      User email and account details are visible here only to administrators. Deleting an account also removes account-linked profile data. Your own admin account cannot be deleted or demoted here.
+    </div>
+
+    <div id="adminUsersStatus" class="dashboard-status"></div>
+    <div id="adminUsersResults" class="admin-users-results"></div>
+  </div>
 </section>
 
 <section class="section app-panel" id="admin-review">
@@ -1086,7 +1113,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260913-1530"></script>
+  <script src="/js/app.js?v=20260913-1545"></script>
 
 
 </body>
