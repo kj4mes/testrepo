@@ -268,6 +268,28 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const submitActivationButton = document.getElementById("submitActivationButton");
   const activationSubmitStatus = document.getElementById("activationSubmitStatus");
   const activationRequirement = document.getElementById("activationRequirement");
+  const quickLoggerOperatorStatus = document.getElementById("quickLoggerOperatorStatus");
+  const quickLoggerParkSearch = document.getElementById("quickLoggerParkSearch");
+  const quickLoggerParkSearchButton = document.getElementById("quickLoggerParkSearchButton");
+  const quickLoggerParkSearchStatus = document.getElementById("quickLoggerParkSearchStatus");
+  const quickLoggerParkResults = document.getElementById("quickLoggerParkResults");
+  const quickLoggerSelectedPark = document.getElementById("quickLoggerSelectedPark");
+  const quickLoggerCall = document.getElementById("quickLoggerCall");
+  const quickLoggerBand = document.getElementById("quickLoggerBand");
+  const quickLoggerMode = document.getElementById("quickLoggerMode");
+  const quickLoggerRstSent = document.getElementById("quickLoggerRstSent");
+  const quickLoggerRstReceived = document.getElementById("quickLoggerRstReceived");
+  const quickLoggerGrid = document.getElementById("quickLoggerGrid");
+  const quickLoggerAddQsoButton = document.getElementById("quickLoggerAddQsoButton");
+  const quickLoggerEntryStatus = document.getElementById("quickLoggerEntryStatus");
+  const quickLoggerProgressText = document.getElementById("quickLoggerProgressText");
+  const quickLoggerProgressCount = document.getElementById("quickLoggerProgressCount");
+  const quickLoggerProgressBar = document.getElementById("quickLoggerProgressBar");
+  const quickLoggerQsoList = document.getElementById("quickLoggerQsoList");
+  const quickLoggerClearButton = document.getElementById("quickLoggerClearButton");
+  const quickLoggerExportButton = document.getElementById("quickLoggerExportButton");
+  const quickLoggerSubmitButton = document.getElementById("quickLoggerSubmitButton");
+  const quickLoggerSubmitStatus = document.getElementById("quickLoggerSubmitStatus");
   const submitParkName = document.getElementById("submitParkName");
   const submitParkCity = document.getElementById("submitParkCity");
   const submitParkState = document.getElementById("submitParkState");
@@ -325,6 +347,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let parsedAdifRecords = [];
   let currentActivationRequirement = 10;
   let currentActivationLicenseClass = null;
+
+  const QUICK_LOGGER_STORAGE_KEY = "cpwQuickLoggerDraftV1";
+  let quickLoggerDraft = {
+    park: null,
+    qsos: []
+  };
+  let quickLoggerOperator = null;
 
   function requiredQsosForLicenseClass(licenseClass) {
     const value = String(licenseClass || "").trim().toUpperCase();
@@ -2117,6 +2146,379 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   });
   submitActivationButton.addEventListener("click", submitActivationLog);
 
+
+  function quickLoggerSaveDraft() {
+    try {
+      localStorage.setItem(QUICK_LOGGER_STORAGE_KEY, JSON.stringify(quickLoggerDraft));
+    } catch (error) {
+      console.warn("Unable to save quick logger draft.", error);
+    }
+  }
+
+  function quickLoggerLoadDraft() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(QUICK_LOGGER_STORAGE_KEY) || "null");
+      if (stored && typeof stored === "object") {
+        quickLoggerDraft = {
+          park: stored.park || null,
+          qsos: Array.isArray(stored.qsos) ? stored.qsos : []
+        };
+      }
+    } catch (error) {
+      console.warn("Unable to load quick logger draft.", error);
+    }
+
+    quickLoggerRender();
+  }
+
+  function quickLoggerRequirement() {
+    return requiredQsosForLicenseClass(quickLoggerOperator?.license_class);
+  }
+
+  function quickLoggerRender() {
+    const required = quickLoggerRequirement();
+    const count = quickLoggerDraft.qsos.length;
+    const percent = Math.min(100, required > 0 ? (count / required) * 100 : 0);
+
+    quickLoggerProgressCount.textContent = `${count} / ${required}`;
+    quickLoggerProgressBar.style.width = `${percent}%`;
+    quickLoggerProgressText.textContent =
+      count >= required
+        ? `✓ Activation requirement met with ${count} QSO${count === 1 ? "" : "s"}.`
+        : `${count} contact${count === 1 ? "" : "s"} logged • ${Math.max(0, required - count)} more needed`;
+
+    if (quickLoggerDraft.park) {
+      const park = quickLoggerDraft.park;
+      quickLoggerSelectedPark.innerHTML =
+        `<strong>🌳 ${escapeHTML(park.name)}</strong><br>` +
+        `${escapeHTML(park.reference_code || "")}` +
+        (park.city || park.state ? ` • ${escapeHTML([park.city, park.state].filter(Boolean).join(", "))}` : "");
+      quickLoggerSelectedPark.classList.add("selected");
+    } else {
+      quickLoggerSelectedPark.textContent = "No park selected.";
+      quickLoggerSelectedPark.classList.remove("selected");
+    }
+
+    if (!count) {
+      quickLoggerQsoList.innerHTML = '<div class="quick-logger-empty">No QSOs logged yet.</div>';
+      return;
+    }
+
+    quickLoggerQsoList.innerHTML = "";
+
+    [...quickLoggerDraft.qsos].reverse().forEach((qso, reverseIndex) => {
+      const index = quickLoggerDraft.qsos.length - 1 - reverseIndex;
+      const row = document.createElement("div");
+      row.className = "quick-logger-qso-row";
+      row.innerHTML =
+        `<div class="quick-logger-qso-main"><strong>${escapeHTML(qso.contacted_callsign)}</strong><span>${escapeHTML(qso.band || "")} • ${escapeHTML(qso.mode || "")}</span></div>` +
+        `<div class="quick-logger-qso-time">${escapeHTML(new Date(qso.qso_datetime).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}))}</div>` +
+        `<button type="button" class="quick-logger-delete-qso" data-qso-index="${index}" aria-label="Delete QSO">×</button>`;
+
+      row.querySelector("[data-qso-index]").addEventListener("click", () => {
+        quickLoggerDraft.qsos.splice(index, 1);
+        quickLoggerSaveDraft();
+        quickLoggerRender();
+      });
+
+      quickLoggerQsoList.appendChild(row);
+    });
+  }
+
+  async function quickLoggerRefreshOperator() {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      quickLoggerOperator = null;
+      quickLoggerOperatorStatus.textContent = "Sign in with a verified callsign to use the logger.";
+      quickLoggerRender();
+      return;
+    }
+
+    const { data: operator, error } = await supabaseClient
+      .from("operators")
+      .select("callsign,callsign_verified,callsign_status,license_class,license_expiration")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    if (
+      error ||
+      !operator?.callsign_verified ||
+      String(operator?.callsign_status || "").toLowerCase() !== "active"
+    ) {
+      quickLoggerOperator = null;
+      quickLoggerOperatorStatus.textContent =
+        "Verify an active amateur callsign before using the Quick Logger.";
+      quickLoggerRender();
+      return;
+    }
+
+    quickLoggerOperator = operator;
+    const required = quickLoggerRequirement();
+    quickLoggerOperatorStatus.innerHTML =
+      `<strong>${escapeHTML(operator.callsign)}</strong> • ${escapeHTML(operator.license_class || "Unknown")} class • ${required} valid QSOs required`;
+    quickLoggerRender();
+  }
+
+  async function quickLoggerSearchParks() {
+    const term = quickLoggerParkSearch.value.trim();
+
+    if (!term) {
+      quickLoggerParkSearchStatus.textContent = "Enter a park name, city, ZIP, or CPW reference.";
+      quickLoggerParkResults.innerHTML = "";
+      return;
+    }
+
+    quickLoggerParkSearchButton.disabled = true;
+    quickLoggerParkSearchStatus.textContent = "Searching...";
+    quickLoggerParkResults.innerHTML = "";
+
+    try {
+      const response = await fetch(`/api/parks?q=${encodeURIComponent(term)}`);
+      const parks = await response.json();
+
+      if (!response.ok) throw new Error(parks.error || "Park search failed.");
+
+      if (!parks.length) {
+        quickLoggerParkSearchStatus.textContent = "No matching parks found.";
+        return;
+      }
+
+      quickLoggerParkSearchStatus.textContent =
+        `${parks.length} park${parks.length === 1 ? "" : "s"} found.`;
+
+      parks.slice(0, 12).forEach((park) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "quick-logger-park-choice";
+        button.innerHTML =
+          `<strong>${escapeHTML(park.name)}</strong>` +
+          `<span>${escapeHTML(park.reference_code || "")}${park.city || park.state ? " • " + escapeHTML([park.city, park.state].filter(Boolean).join(", ")) : ""}</span>`;
+
+        button.addEventListener("click", () => {
+          quickLoggerDraft.park = {
+            id: park.id,
+            name: park.name,
+            reference_code: park.reference_code,
+            city: park.city,
+            state: park.state
+          };
+          quickLoggerParkResults.innerHTML = "";
+          quickLoggerParkSearchStatus.textContent = "Park selected.";
+          quickLoggerSaveDraft();
+          quickLoggerRender();
+          quickLoggerCall.focus();
+        });
+
+        quickLoggerParkResults.appendChild(button);
+      });
+    } catch (error) {
+      console.error(error);
+      quickLoggerParkSearchStatus.textContent = "Unable to search parks: " + error.message;
+    } finally {
+      quickLoggerParkSearchButton.disabled = false;
+    }
+  }
+
+  function quickLoggerAddQso() {
+    quickLoggerEntryStatus.textContent = "";
+
+    if (!quickLoggerOperator) {
+      quickLoggerEntryStatus.textContent = "Sign in with a verified callsign first.";
+      return;
+    }
+
+    if (!quickLoggerDraft.park) {
+      quickLoggerEntryStatus.textContent = "Choose the park before logging contacts.";
+      return;
+    }
+
+    const call = quickLoggerCall.value.trim().toUpperCase();
+
+    if (!validContactCallsign(call)) {
+      quickLoggerEntryStatus.textContent = "Enter a valid amateur callsign.";
+      return;
+    }
+
+    const now = new Date();
+    const qso = {
+      qso_datetime: now.toISOString(),
+      contacted_callsign: call,
+      band: quickLoggerBand.value || null,
+      frequency_mhz: null,
+      mode: quickLoggerMode.value || null,
+      rst_sent: quickLoggerRstSent.value.trim() || null,
+      rst_received: quickLoggerRstReceived.value.trim() || null,
+      grid_square: quickLoggerGrid.value.trim() || null,
+      raw_adif: {
+        CALL: call,
+        BAND: quickLoggerBand.value || "",
+        MODE: quickLoggerMode.value || "",
+        QSO_DATE: now.toISOString().slice(0, 10).replaceAll("-", ""),
+        TIME_ON: now.toISOString().slice(11, 19).replaceAll(":", ""),
+        STATION_CALLSIGN: quickLoggerOperator.callsign,
+        RST_SENT: quickLoggerRstSent.value.trim(),
+        RST_RCVD: quickLoggerRstReceived.value.trim(),
+        GRIDSQUARE: quickLoggerGrid.value.trim()
+      }
+    };
+
+    const duplicate = quickLoggerDraft.qsos.some((existing) =>
+      existing.contacted_callsign === qso.contacted_callsign &&
+      existing.band === qso.band &&
+      existing.mode === qso.mode &&
+      Math.abs(new Date(existing.qso_datetime) - now) < 60000
+    );
+
+    if (duplicate) {
+      quickLoggerEntryStatus.textContent = "That looks like a duplicate of the last contact. It was not added.";
+      return;
+    }
+
+    quickLoggerDraft.qsos.push(qso);
+    quickLoggerSaveDraft();
+    quickLoggerRender();
+
+    quickLoggerCall.value = "";
+    quickLoggerGrid.value = "";
+    quickLoggerEntryStatus.textContent = `✓ ${call} logged at ${now.toISOString().slice(11, 16)} UTC.`;
+    quickLoggerCall.focus();
+  }
+
+  function quickLoggerAdifText() {
+    if (!quickLoggerOperator || !quickLoggerDraft.park) return "";
+
+    const header =
+      "<ADIF_VER:5>3.1.4 <PROGRAMID:15>City Park Waves <EOH>\n";
+
+    const records = quickLoggerDraft.qsos.map((qso) => {
+      const date = new Date(qso.qso_datetime);
+      const fields = {
+        CALL: qso.contacted_callsign,
+        QSO_DATE: date.toISOString().slice(0,10).replaceAll("-",""),
+        TIME_ON: date.toISOString().slice(11,19).replaceAll(":",""),
+        BAND: qso.band || "",
+        MODE: qso.mode || "",
+        RST_SENT: qso.rst_sent || "",
+        RST_RCVD: qso.rst_received || "",
+        GRIDSQUARE: qso.grid_square || "",
+        STATION_CALLSIGN: quickLoggerOperator.callsign
+      };
+
+      return Object.entries(fields)
+        .filter(([, value]) => value)
+        .map(([key, value]) => `<${key}:${String(value).length}>${value}`)
+        .join(" ") + " <EOR>";
+    });
+
+    return header + records.join("\n") + "\n";
+  }
+
+  function quickLoggerExportAdif() {
+    if (!quickLoggerDraft.qsos.length) {
+      quickLoggerSubmitStatus.textContent = "Log at least one QSO before exporting.";
+      return;
+    }
+
+    const text = quickLoggerAdifText();
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const stamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "").slice(0, 15);
+    anchor.href = url;
+    anchor.download = `cpw_${quickLoggerOperator?.callsign || "activation"}_${stamp}.adi`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    quickLoggerSubmitStatus.textContent = "✓ ADIF file exported.";
+  }
+
+  async function quickLoggerSubmitActivation() {
+    quickLoggerSubmitStatus.textContent = "";
+
+    await quickLoggerRefreshOperator();
+
+    if (!quickLoggerOperator) {
+      quickLoggerSubmitStatus.textContent = "A verified active callsign is required.";
+      return;
+    }
+
+    if (!quickLoggerDraft.park) {
+      quickLoggerSubmitStatus.textContent = "Choose the park you activated.";
+      return;
+    }
+
+    const required = quickLoggerRequirement();
+
+    if (quickLoggerDraft.qsos.length < required) {
+      quickLoggerSubmitStatus.textContent =
+        `You need at least ${required} valid QSOs. ${quickLoggerDraft.qsos.length} are currently logged.`;
+      return;
+    }
+
+    quickLoggerSubmitButton.disabled = true;
+    quickLoggerSubmitStatus.textContent = "Submitting activation securely...";
+
+    try {
+      const stamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "");
+      const { data: result, error } = await supabaseClient.rpc("submit_cpw_activation", {
+        p_park_id: quickLoggerDraft.park.id,
+        p_source_filename: `cpw_quick_logger_${stamp}.adi`,
+        p_log_station_callsign: quickLoggerOperator.callsign,
+        p_qsos: quickLoggerDraft.qsos
+      });
+
+      if (error) throw error;
+
+      const parkName = result?.park_name || quickLoggerDraft.park.name;
+      const count = Number(result?.qso_count || quickLoggerDraft.qsos.length);
+
+      quickLoggerSubmitStatus.textContent =
+        `✓ Activation submitted for ${parkName}: ${count} valid QSO${count === 1 ? "" : "s"} logged.`;
+
+      quickLoggerDraft = { park: null, qsos: [] };
+      quickLoggerSaveDraft();
+      quickLoggerRender();
+
+      await loadMyActivations();
+      await loadPublicActivity();
+      await loadLeaderboard("all");
+      await loadHomeStats();
+    } catch (error) {
+      console.error(error);
+      const message = String(error.message || "Submission failed.");
+      quickLoggerSubmitStatus.textContent = message.toLowerCase().includes("already been submitted")
+        ? "This activation has already been submitted."
+        : "The activation could not be submitted: " + message;
+    } finally {
+      quickLoggerSubmitButton.disabled = false;
+    }
+  }
+
+  quickLoggerParkSearchButton.addEventListener("click", quickLoggerSearchParks);
+  quickLoggerParkSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") quickLoggerSearchParks();
+  });
+  quickLoggerAddQsoButton.addEventListener("click", quickLoggerAddQso);
+  quickLoggerCall.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") quickLoggerAddQso();
+  });
+  quickLoggerExportButton.addEventListener("click", quickLoggerExportAdif);
+  quickLoggerSubmitButton.addEventListener("click", quickLoggerSubmitActivation);
+  quickLoggerClearButton.addEventListener("click", () => {
+    if (!quickLoggerDraft.park && !quickLoggerDraft.qsos.length) return;
+
+    const confirmed = window.confirm("Clear the current Quick Logger draft?");
+    if (!confirmed) return;
+
+    quickLoggerDraft = { park: null, qsos: [] };
+    quickLoggerSaveDraft();
+    quickLoggerRender();
+    quickLoggerEntryStatus.textContent = "Draft cleared.";
+  });
+
   function activityDate(value) {
     if (!value) return "Date unavailable";
 
@@ -2574,6 +2976,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   supabaseClient.auth.onAuthStateChange(() => {
     refreshAccountStatus();
     loadMyActivations();
+    quickLoggerRefreshOperator();
   });
 
   const initialParams = new URLSearchParams(window.location.search);
@@ -2593,3 +2996,5 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   loadLeaderboard("all");
   refreshAccountStatus();
   loadMyActivations();
+  quickLoggerLoadDraft();
+  quickLoggerRefreshOperator();
