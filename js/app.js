@@ -229,18 +229,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     showPanel(window.location.hash.slice(1) || "home", false);
   });
 
-  const initialParkReference = new URLSearchParams(window.location.search).get("park");
-
-  if (initialParkReference) {
-    openParkDetails(initialParkReference);
-  } else {
-    showPanel(window.location.hash.slice(1) || "home", false);
-  }
-
-  loadHomeStats();
-  loadPublicActivity();
-  loadLeaderboard("all");
-
   const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
   const callsignButton = document.getElementById("callsignButton");
@@ -2196,5 +2184,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     loadMyActivations();
   });
 
+  const initialParkReference = new URLSearchParams(window.location.search).get("park");
+
+  if (initialParkReference) {
+    openParkDetails(initialParkReference);
+  } else {
+    showPanel(window.location.hash.slice(1) || "home", false);
+  }
+
+  loadHomeStats();
+  loadPublicActivity();
+  loadLeaderboard("all");
   refreshAccountStatus();
   loadMyActivations();
