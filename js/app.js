@@ -2089,7 +2089,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
         item.innerHTML = `
           <div class="activity-feed-title">
-            ${escapeHTML(activation.station_callsign)} activated
+            <button class="operator-profile-link" data-operator-call="${escapeHTML(activation.station_callsign)}">${escapeHTML(activation.station_callsign)}</button> activated
             ${escapeHTML(park.name || "a park")}
           </div>
 
@@ -2111,6 +2111,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         const button = item.querySelector("[data-public-park-ref]");
         if (button) {
           button.addEventListener("click", () => openParkDetails(button.dataset.publicParkRef));
+        }
+
+        const operatorButton = item.querySelector("[data-operator-call]");
+        if (operatorButton) {
+          operatorButton.addEventListener("click", () => openOperatorProfile(operatorButton.dataset.operatorCall));
         }
 
         publicActivityFeed.appendChild(item);
@@ -2153,11 +2158,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
         row.innerHTML = `
           <div class="leaderboard-rank">${index + 1}</div>
-          <div class="leaderboard-call">${escapeHTML(operator.callsign)}</div>
+          <div class="leaderboard-call"><button class="operator-profile-link" data-leaderboard-call="${escapeHTML(operator.callsign)}">${escapeHTML(operator.callsign)}</button></div>
           <div class="leaderboard-number">${Number(operator.unique_parks || 0).toLocaleString()}</div>
           <div class="leaderboard-number">${Number(operator.activations || 0).toLocaleString()}</div>
           <div class="leaderboard-number">${Number(operator.qsos || 0).toLocaleString()}</div>
         `;
+
+        const profileButton = row.querySelector("[data-leaderboard-call]");
+        if (profileButton) {
+          profileButton.addEventListener("click", () => openOperatorProfile(profileButton.dataset.leaderboardCall));
+        }
 
         leaderboardResults.appendChild(row);
       });
@@ -2248,6 +2258,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
       signOutButton.style.display = "none";
+      profileEditor.style.display = "none";
       currentUserIsAdmin = false;
       document.body.classList.remove("admin-user");
 
@@ -2263,7 +2274,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     const { data: operator } = await supabaseClient
       .from("operators")
-      .select("callsign,callsign_verified,license_class,license_expiration,is_admin")
+      .select("callsign,callsign_verified,license_class,license_expiration,is_admin,profile_bio,profile_state,profile_grid,profile_avatar_url,profile_qrz_url,profile_public")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
@@ -2280,13 +2291,58 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
 
     if (operator?.callsign) {
+      profileEditor.style.display = "block";
+      profileState.value = operator.profile_state || "";
+      profileGrid.value = operator.profile_grid || "";
+      profileAvatarUrl.value = operator.profile_avatar_url || "";
+      profileQrzUrl.value = operator.profile_qrz_url || "";
+      profileBio.value = operator.profile_bio || "";
+      profilePublic.checked = operator.profile_public !== false;
+
       accountStatus.textContent =
         `Signed in as ${session.user.email}. Verified callsign: ${operator.callsign}${operator.license_class ? ` • ${operator.license_class} class` : ""}.`;
     } else {
+      profileEditor.style.display = "none";
       accountStatus.textContent =
         `Signed in as ${session.user.email}. Verify your callsign below.`;
     }
   }
+
+  async function saveOperatorProfile() {
+    profileSaveStatus.textContent = "";
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      profileSaveStatus.textContent = "Sign in before saving your profile.";
+      return;
+    }
+
+    profileSaveStatus.textContent = "Saving profile...";
+
+    const { error } = await supabaseClient
+      .from("operators")
+      .update({
+        profile_state: profileState.value.trim().toUpperCase() || null,
+        profile_grid: profileGrid.value.trim() || null,
+        profile_avatar_url: profileAvatarUrl.value.trim() || null,
+        profile_qrz_url: profileQrzUrl.value.trim() || null,
+        profile_bio: profileBio.value.trim() || null,
+        profile_public: profilePublic.checked
+      })
+      .eq("auth_user_id", session.user.id);
+
+    if (error) {
+      console.error(error);
+      profileSaveStatus.textContent = "Unable to save profile: " + error.message;
+      return;
+    }
+
+    profileSaveStatus.textContent = "✓ Profile saved.";
+    await refreshAccountStatus();
+  }
+
+  saveProfileButton.addEventListener("click", saveOperatorProfile);
 
   async function createAccount() {
     const email = accountEmail.value.trim();
@@ -2358,9 +2414,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     loadMyActivations();
   });
 
-  const initialParkReference = new URLSearchParams(window.location.search).get("park");
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialParkReference = initialParams.get("park");
+  const initialOperatorCall = initialParams.get("operator");
 
-  if (initialParkReference) {
+  if (initialOperatorCall) {
+    openOperatorProfile(initialOperatorCall);
+  } else if (initialParkReference) {
     openParkDetails(initialParkReference);
   } else {
     showPanel(window.location.hash.slice(1) || "home", false);
