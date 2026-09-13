@@ -421,6 +421,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       touchZoom: true
     }).setView([lat, lon], 11);
 
+    nearbyMap.on("click", () => {
+      document
+        .querySelectorAll(".park-identity-marker.show-identity")
+        .forEach((item) => item.classList.remove("show-identity"));
+    });
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
@@ -547,10 +553,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
             .addTo(nearbyLayer);
 
           parkMarker.on("click", () => {
+            document
+              .querySelectorAll(".park-identity-marker.show-identity")
+              .forEach((item) => item.classList.remove("show-identity"));
+
             const element = parkMarker.getElement();
             const identity = element?.querySelector(".park-identity-marker");
             if (identity) {
-              identity.classList.toggle("show-identity");
+              identity.classList.add("show-identity");
             }
           });
         }
