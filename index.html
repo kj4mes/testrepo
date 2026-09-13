@@ -41,6 +41,7 @@
     <a href="#home" data-panel-link="home">Home</a>
     <a href="#parks" data-panel-link="parks">Find Parks</a>
     <a href="#activate" data-panel-link="activate">Activate</a>
+    <a href="#quick-logger" data-panel-link="quick-logger">Quick Logger</a>
     <a href="#activity" data-panel-link="activity">Activity</a>
     <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
   </nav>
@@ -58,6 +59,7 @@
       <a href="#home" data-panel-link="home">Home</a>
       <a href="#parks" data-panel-link="parks">Find Parks</a>
       <a href="#activate" data-panel-link="activate">Submit Activation</a>
+      <a href="#quick-logger" data-panel-link="quick-logger">Quick Logger</a>
       <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
       <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
       <div class="menu-separator"></div>
@@ -454,6 +456,132 @@
     </div>
   </div>
 
+</section>
+
+
+<section class="section app-panel" id="quick-logger">
+  <div class="quick-logger-shell">
+    <div class="quick-logger-heading">
+      <div>
+        <div class="quick-logger-kicker">Mobile beta</div>
+        <h2>City Park Waves Quick Logger</h2>
+        <p>Pick your park, log contacts as you make them, and submit the completed activation directly to City Park Waves.</p>
+      </div>
+      <div class="quick-logger-save-pill">💾 Draft saves on this device</div>
+    </div>
+
+    <div id="quickLoggerOperatorStatus" class="quick-logger-operator-status">
+      Sign in with a verified callsign to use the logger.
+    </div>
+
+    <div class="quick-logger-card">
+      <div class="quick-logger-step">1</div>
+      <div class="quick-logger-card-body">
+        <h3>Choose your park</h3>
+        <div class="search-row">
+          <input id="quickLoggerParkSearch" type="text" placeholder="Park name, city, ZIP, or CPW reference">
+          <button id="quickLoggerParkSearchButton" type="button">Find Park</button>
+        </div>
+        <div id="quickLoggerParkSearchStatus" class="quick-logger-muted"></div>
+        <div id="quickLoggerParkResults"></div>
+        <div id="quickLoggerSelectedPark" class="quick-logger-selected-park">No park selected.</div>
+      </div>
+    </div>
+
+    <div class="quick-logger-card">
+      <div class="quick-logger-step">2</div>
+      <div class="quick-logger-card-body">
+        <div class="quick-logger-progress-head">
+          <div>
+            <h3>Log a QSO</h3>
+            <div id="quickLoggerProgressText" class="quick-logger-muted">0 contacts logged</div>
+          </div>
+          <div class="quick-logger-progress-count" id="quickLoggerProgressCount">0 / 10</div>
+        </div>
+
+        <div class="quick-logger-progress-track">
+          <div id="quickLoggerProgressBar" class="quick-logger-progress-bar"></div>
+        </div>
+
+        <div class="quick-logger-entry-grid">
+          <label class="quick-logger-field quick-logger-call-field">
+            <span>Callsign</span>
+            <input id="quickLoggerCall" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="W1AW">
+          </label>
+
+          <label class="quick-logger-field">
+            <span>Band</span>
+            <select id="quickLoggerBand">
+              <option>160m</option>
+              <option>80m</option>
+              <option>60m</option>
+              <option>40m</option>
+              <option>30m</option>
+              <option selected>20m</option>
+              <option>17m</option>
+              <option>15m</option>
+              <option>12m</option>
+              <option>10m</option>
+              <option>6m</option>
+              <option>2m</option>
+              <option>70cm</option>
+            </select>
+          </label>
+
+          <label class="quick-logger-field">
+            <span>Mode</span>
+            <select id="quickLoggerMode">
+              <option selected>SSB</option>
+              <option>CW</option>
+              <option>FT8</option>
+              <option>FT4</option>
+              <option>FM</option>
+              <option>RTTY</option>
+              <option>DATA</option>
+              <option>AM</option>
+            </select>
+          </label>
+
+          <label class="quick-logger-field">
+            <span>RST Sent</span>
+            <input id="quickLoggerRstSent" type="text" maxlength="5" placeholder="59">
+          </label>
+
+          <label class="quick-logger-field">
+            <span>RST Received</span>
+            <input id="quickLoggerRstReceived" type="text" maxlength="5" placeholder="59">
+          </label>
+
+          <label class="quick-logger-field">
+            <span>Grid (optional)</span>
+            <input id="quickLoggerGrid" type="text" maxlength="8" placeholder="EN72">
+          </label>
+        </div>
+
+        <button id="quickLoggerAddQsoButton" class="quick-logger-log-button" type="button">＋ Log QSO Now</button>
+        <div id="quickLoggerEntryStatus" class="quick-logger-muted"></div>
+      </div>
+    </div>
+
+    <div class="quick-logger-card">
+      <div class="quick-logger-step">3</div>
+      <div class="quick-logger-card-body">
+        <div class="quick-logger-list-head">
+          <h3>Activation Log</h3>
+          <button id="quickLoggerClearButton" type="button" class="quick-logger-secondary-button">Clear Draft</button>
+        </div>
+        <div id="quickLoggerQsoList" class="quick-logger-qso-list">
+          <div class="quick-logger-empty">No QSOs logged yet.</div>
+        </div>
+
+        <div class="quick-logger-finish-actions">
+          <button id="quickLoggerExportButton" type="button" class="quick-logger-secondary-button">Export ADIF</button>
+          <button id="quickLoggerSubmitButton" type="button">Submit Activation</button>
+        </div>
+        <div id="quickLoggerSubmitStatus" class="quick-logger-submit-status"></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="section app-panel" id="my-activations">
