@@ -2030,9 +2030,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         ? '<img class="operator-profile-avatar" src="' + escapeHTML(op.avatar_url) + '" alt="' + escapeHTML(op.callsign) + '">'
         : '<div class="operator-profile-avatar operator-profile-avatar-fallback">📡</div>';
       const locationHtml = escapeHTML([op.state, op.grid].filter(Boolean).join(" • "));
-      const licenseHtml = op.license_class ? '<div>' + escapeHTML(op.license_class) + ' class</div>' : "";
-      const bioHtml = op.bio ? '<p class="operator-profile-bio">' + escapeHTML(op.bio) + '</p>' : "";
-      const linkHtml = op.qrz_url ? '<p><a class="map-link" href="' + escapeHTML(op.qrz_url) + '" target="_blank" rel="noopener noreferrer">Operator Link</a></p>' : "";
+      const licenseHtml = op.license_class ? '<span class="operator-profile-chip">' + escapeHTML(op.license_class) + ' class</span>' : "";
+      const stateHtml = op.state ? '<span class="operator-profile-chip">📍 ' + escapeHTML(op.state) + '</span>' : "";
+      const gridHtml = op.grid ? '<span class="operator-profile-chip">🧭 ' + escapeHTML(op.grid) + '</span>' : "";
+      const bioHtml = op.bio ? '<p class="operator-profile-bio">' + escapeHTML(op.bio) + '</p>' : '<p class="operator-profile-bio operator-profile-bio-empty">No operator bio has been added yet.</p>';
+      const linkHtml = op.qrz_url ? '<a class="operator-profile-external-link" href="' + escapeHTML(op.qrz_url) + '" target="_blank" rel="noopener noreferrer">View operator page ↗</a>' : "";
 
       const bandsHtml = bands.length ? bands.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.band) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No band data yet.</p>";
       const modesHtml = modes.length ? modes.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.mode) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No mode data yet.</p>";
@@ -2044,11 +2046,34 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       }).join("") : "<p>No activations yet.</p>";
 
       operatorProfileContent.innerHTML =
-        '<div class="operator-profile-card"><div class="operator-profile-head">' + avatarHtml + '<div><h2>' + escapeHTML(op.callsign) + '</h2><div>' + locationHtml + '</div>' + licenseHtml + '</div></div>' + bioHtml + linkHtml + '</div>' +
-        '<div class="park-detail-stats"><div class="park-detail-stat"><strong>' + Number(stats.unique_parks || 0).toLocaleString() + '</strong>Unique Parks</div><div class="park-detail-stat"><strong>' + Number(stats.activations || 0).toLocaleString() + '</strong>Activations</div><div class="park-detail-stat"><strong>' + Number(stats.qsos || 0).toLocaleString() + '</strong>QSOs</div><div class="park-detail-stat"><strong>' + Number(stats.first_activations || 0).toLocaleString() + '</strong>First Activations</div></div>' +
-        '<div class="park-detail-card"><h3>Achievements</h3><div class="operator-badges">' + achievementsHtml + '</div></div>' +
-        '<div class="operator-profile-grid"><div class="park-detail-card"><h3>Top Bands</h3>' + bandsHtml + '</div><div class="park-detail-card"><h3>Top Modes</h3>' + modesHtml + '</div></div>' +
-        '<div class="park-detail-card"><h3>Recent Activations</h3>' + recentHtml + '</div>';
+        '<div class="operator-profile-hero">' +
+          '<div class="operator-profile-hero-wave" aria-hidden="true">)))</div>' +
+          '<div class="operator-profile-head">' + avatarHtml +
+            '<div class="operator-profile-identity">' +
+              '<div class="operator-profile-kicker">City Park Waves Operator</div>' +
+              '<h2>' + escapeHTML(op.callsign) + '</h2>' +
+              '<div class="operator-profile-chips">' + licenseHtml + stateHtml + gridHtml + '</div>' +
+            '</div>' +
+          '</div>' +
+          bioHtml +
+          linkHtml +
+        '</div>' +
+        '<div class="operator-profile-stats">' +
+          '<div class="operator-profile-stat"><span class="operator-stat-icon">🌳</span><strong>' + Number(stats.unique_parks || 0).toLocaleString() + '</strong><span>Unique Parks</span></div>' +
+          '<div class="operator-profile-stat"><span class="operator-stat-icon">📡</span><strong>' + Number(stats.activations || 0).toLocaleString() + '</strong><span>Activations</span></div>' +
+          '<div class="operator-profile-stat"><span class="operator-stat-icon">💬</span><strong>' + Number(stats.qsos || 0).toLocaleString() + '</strong><span>QSOs</span></div>' +
+          '<div class="operator-profile-stat"><span class="operator-stat-icon">🚩</span><strong>' + Number(stats.first_activations || 0).toLocaleString() + '</strong><span>First Activations</span></div>' +
+        '</div>' +
+        '<div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>🏅</span><h3>Achievements</h3></div><a href="#achievements" data-panel-link="achievements">See all badges</a></div><div class="operator-badges">' + achievementsHtml + '</div></div>' +
+        '<div class="operator-profile-grid"><div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>📻</span><h3>Top Bands</h3></div></div>' + bandsHtml + '</div><div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>🎙️</span><h3>Top Modes</h3></div></div>' + modesHtml + '</div></div>' +
+        '<div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>🗺️</span><h3>Recent Activations</h3></div></div>' + recentHtml + '</div>';
+
+      operatorProfileContent.querySelectorAll("[data-panel-link]").forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          showPanel(link.dataset.panelLink);
+        });
+      });
     } catch (error) {
       console.error(error);
       operatorProfileStatus.textContent = "Unable to load operator profile.";
