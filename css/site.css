@@ -1630,3 +1630,33 @@
   font-weight: 800;
   vertical-align: middle;
 }
+
+
+.achievement-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+
+.achievement-guide-card {
+  background: #ffffff;
+  border: 1px solid #dbe7ea;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(23, 50, 77, 0.06);
+}
+
+.achievement-guide-card h3 {
+  margin: 8px 0 6px;
+}
+
+.achievement-guide-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.achievement-guide-icon {
+  font-size: 32px;
+  line-height: 1;
+}
