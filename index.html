@@ -737,15 +737,40 @@
 
   <h2>Account & Operator Profile</h2>
 
-  <p>
-    Create an account or sign in. Your verified callsign will be linked to this account.
-  </p>
+  <div id="loginPanel" class="search account-login-card">
+    <h3>Log In</h3>
+    <p class="account-basic-note">Use your username or email address and password.</p>
 
-  <div class="search account-basic-card">
-    <h3>Basic Account Information</h3>
-    <p class="account-basic-note">
-      Email and street address are account information and are not shown on your public operator profile.
-    </p>
+    <div class="account-login-grid">
+      <label class="profile-field">
+        <span>Username or email</span>
+        <input id="loginIdentifier" type="text" placeholder="Username or email address" autocomplete="username">
+      </label>
+
+      <label class="profile-field">
+        <span>Password</span>
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+      </label>
+    </div>
+
+    <div class="account-basic-actions">
+      <button id="signInButton">Log In</button>
+      <button id="openCreateAccountButton" type="button" class="account-secondary-button">Create Account</button>
+    </div>
+
+    <div id="loginStatus" style="margin-top:16px;"></div>
+  </div>
+
+  <div id="accountInfoPanel" class="search account-basic-card" style="display:none;">
+    <div class="account-form-heading">
+      <div>
+        <h3 id="accountInfoHeading">Create Account</h3>
+        <p id="accountInfoNote" class="account-basic-note">
+          Complete the information below to create your City Park Waves account.
+        </p>
+      </div>
+      <button id="cancelCreateAccountButton" type="button" class="account-secondary-button">Back to Login</button>
+    </div>
 
     <div class="account-basic-grid">
       <label class="profile-field">
@@ -778,15 +803,14 @@
         <input id="accountAddress" type="text" maxlength="160" placeholder="Street address" autocomplete="street-address">
       </label>
 
-      <label class="profile-field">
+      <label id="accountPasswordField" class="profile-field">
         <span>Password</span>
-        <input id="accountPassword" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+        <input id="accountPassword" type="password" placeholder="Password (6+ characters)" autocomplete="new-password">
       </label>
     </div>
 
     <div class="account-basic-actions">
       <button id="signUpButton">Create Account</button>
-      <button id="signInButton">Sign In</button>
       <button id="saveBasicInfoButton" style="display:none;">Save Basic Info</button>
       <button id="signOutButton" style="display:none;">Sign Out</button>
     </div>
@@ -1113,7 +1137,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260913-1555"></script>
+  <script src="/js/app.js?v=20260913-1610"></script>
 
 
 </body>
