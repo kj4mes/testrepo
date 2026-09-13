@@ -1763,7 +1763,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   function parseAdif(text) {
     const records = [];
-    const parts = text.split(/<EOR>/i);
+    const normalizedText = String(text || "")
+      .replace(/^\uFEFF/, "")
+      .replace(/\r\n?/g, "\n");
+    const body = normalizedText.replace(/^.*?<EOH>/is, "");
+    const parts = body.split(/<EOR\s*>/i);
 
     for (const part of parts) {
       if (!part.trim()) continue;
@@ -1906,7 +1910,43 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     const file = adifFile.files?.[0];
     if (!file) return;
 
-    const text = await file.text();
+    const fileName = String(file.name || "");
+    const extension = fileName.includes(".")
+      ? fileName.split(".").pop().toLowerCase()
+      : "";
+
+    if (!["adi", "adif"].includes(extension)) {
+      adifFile.value = "";
+      adifPreview.textContent =
+        "Please choose an ADIF log file ending in .adi or .adif.";
+      return;
+    }
+
+    if (file.size === 0) {
+      adifFile.value = "";
+      adifPreview.textContent = "That ADIF file is empty.";
+      return;
+    }
+
+    let text;
+
+    try {
+      text = await file.text();
+    } catch (error) {
+      console.error("Unable to read ADIF file:", error);
+      adifFile.value = "";
+      adifPreview.textContent =
+        "The browser could not read that ADIF file. Try selecting it again from Files.";
+      return;
+    }
+
+    if (!/<EOR\s*>/i.test(text)) {
+      parsedAdifRecords = [];
+      adifPreview.textContent =
+        "This file does not appear to contain ADIF QSO records (<EOR> markers were not found).";
+      return;
+    }
+
     const rawRecords = parseAdif(text);
     const validation = validateAndDedupeAdif(rawRecords);
 
