@@ -240,6 +240,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const signInButton = document.getElementById("signInButton");
   const signOutButton = document.getElementById("signOutButton");
   const accountStatus = document.getElementById("accountStatus");
+  const feedbackCategory = document.getElementById("feedbackCategory");
+  const feedbackMessage = document.getElementById("feedbackMessage");
+  const submitFeedbackButton = document.getElementById("submitFeedbackButton");
+  const feedbackStatus = document.getElementById("feedbackStatus");
+  const refreshFeedbackButton = document.getElementById("refreshFeedbackButton");
+  const adminFeedbackStatus = document.getElementById("adminFeedbackStatus");
+  const adminFeedbackResults = document.getElementById("adminFeedbackResults");
   const operatorProfileStatus = document.getElementById("operatorProfileStatus");
   const operatorProfileContent = document.getElementById("operatorProfileContent");
   const operatorProfileBackButton = document.getElementById("operatorProfileBackButton");
@@ -1220,6 +1227,131 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   repairMunicipalitiesButton.addEventListener("click", repairMissingMunicipalities);
 
   refreshQualityReviewButton.addEventListener("click", loadQualityReviewParks);
+
+
+  async function submitFeedback() {
+    const message = feedbackMessage.value.trim();
+
+    if (message.length < 3) {
+      feedbackStatus.textContent = "Please enter a little more detail.";
+      return;
+    }
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    if (!sessionData?.session?.user) {
+      feedbackStatus.textContent = "Please sign in before submitting feedback.";
+      showPanel("account");
+      return;
+    }
+
+    submitFeedbackButton.disabled = true;
+    feedbackStatus.textContent = "Sending feedback...";
+
+    try {
+      const { error } = await supabaseClient.rpc("submit_cpw_feedback", {
+        p_category: feedbackCategory.value,
+        p_message: message,
+        p_page_context: window.location.pathname + window.location.search + window.location.hash
+      });
+
+      if (error) throw error;
+
+      feedbackMessage.value = "";
+      feedbackCategory.value = "bug";
+      feedbackStatus.textContent = "✓ Thank you — your feedback was sent.";
+    } catch (error) {
+      console.error(error);
+      feedbackStatus.textContent = "Unable to send feedback: " + error.message;
+    } finally {
+      submitFeedbackButton.disabled = false;
+    }
+  }
+
+  submitFeedbackButton.addEventListener("click", submitFeedback);
+
+  function feedbackCategoryLabel(category) {
+    const labels = {
+      bug: "🐛 Bug",
+      idea: "💡 Idea",
+      park_data: "🌳 Park Data",
+      usability: "🧭 Usability",
+      other: "💬 Other"
+    };
+    return labels[category] || category;
+  }
+
+  async function loadAdminFeedback() {
+    if (!currentUserIsAdmin) return;
+
+    adminFeedbackResults.innerHTML = "";
+    adminFeedbackStatus.textContent = "Loading feedback...";
+
+    const { data, error } = await supabaseClient
+      .from("feedback_submissions")
+      .select("id,callsign,category,message,page_context,status,admin_notes,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error(error);
+      adminFeedbackStatus.textContent = "Unable to load feedback: " + error.message;
+      return;
+    }
+
+    if (!data?.length) {
+      adminFeedbackStatus.textContent = "No feedback has been submitted yet.";
+      return;
+    }
+
+    const openCount = data.filter((item) => item.status === "new" || item.status === "reviewing").length;
+    adminFeedbackStatus.textContent =
+      `${data.length} feedback item${data.length === 1 ? "" : "s"} • ${openCount} open`;
+
+    data.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "feedback-admin-card";
+      card.innerHTML = `
+        <div class="feedback-admin-head">
+          <span class="feedback-category-chip">${escapeHTML(feedbackCategoryLabel(item.category))}</span>
+          <span class="feedback-status-chip feedback-status-${escapeHTML(item.status)}">${escapeHTML(item.status)}</span>
+        </div>
+        <p class="feedback-admin-message">${escapeHTML(item.message)}</p>
+        <div class="feedback-admin-meta">
+          ${item.callsign ? `<strong>${escapeHTML(item.callsign)}</strong> • ` : ""}
+          ${escapeHTML(new Date(item.created_at).toLocaleString())}
+          ${item.page_context ? `<br><span>From: ${escapeHTML(item.page_context)}</span>` : ""}
+        </div>
+        <div class="feedback-admin-actions">
+          <button data-feedback-status="reviewing">Reviewing</button>
+          <button data-feedback-status="resolved">Resolve</button>
+          <button data-feedback-status="declined">Decline</button>
+        </div>
+      `;
+
+      card.querySelectorAll("[data-feedback-status]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          const { error } = await supabaseClient.rpc("admin_review_cpw_feedback", {
+            p_feedback_id: item.id,
+            p_status: button.dataset.feedbackStatus,
+            p_admin_notes: null
+          });
+
+          if (error) {
+            alert("Unable to update feedback: " + error.message);
+            button.disabled = false;
+            return;
+          }
+
+          await loadAdminFeedback();
+        });
+      });
+
+      adminFeedbackResults.appendChild(card);
+    });
+  }
+
+  refreshFeedbackButton.addEventListener("click", loadAdminFeedback);
 
   async function loadPendingParkSubmissions() {
     pendingParksResults.innerHTML = "";
@@ -2313,6 +2445,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     if (operator?.is_admin) {
       loadPendingParkSubmissions();
+      loadAdminFeedback();
       if (parkDetailSuggestionsStatus && parkDetailSuggestionsResults) {
         loadParkDetailSuggestions();
       }
