@@ -539,31 +539,62 @@
     <div id="accountStatus" style="margin-top:16px;"></div>
   </div>
 
-  <div class="search" id="profileEditor" style="display:none;">
-    <h3>Public Operator Profile</h3>
-    <p>Choose what other City Park Waves users can see on your callsign profile.</p>
-
-    <div class="search-row">
-      <input id="profileState" type="text" placeholder="Home state (optional)" maxlength="2">
-      <input id="profileGrid" type="text" placeholder="Grid square (optional)">
+  <div class="profile-editor-shell" id="profileEditor" style="display:none;">
+    <div class="profile-editor-heading">
+      <div>
+        <div class="profile-editor-eyebrow">Operator identity</div>
+        <h3>Public Operator Profile</h3>
+        <p>Build the profile other City Park Waves operators see when they click your callsign.</p>
+      </div>
+      <div class="profile-editor-badge">📡 On-air profile</div>
     </div>
 
-    <div class="search-row" style="margin-top:10px;">
-      <input id="profileAvatarUrl" type="url" placeholder="Avatar/photo URL (optional)">
-      <input id="profileQrzUrl" type="url" placeholder="QRZ/profile URL (optional)">
+    <div class="profile-editor-grid">
+      <label class="profile-field">
+        <span>Home state</span>
+        <input id="profileState" type="text" placeholder="MI" maxlength="2">
+        <small>Shown beside your callsign.</small>
+      </label>
+
+      <label class="profile-field">
+        <span>Grid square</span>
+        <input id="profileGrid" type="text" placeholder="EN72os">
+        <small>Optional Maidenhead locator.</small>
+      </label>
+
+      <label class="profile-field">
+        <span>Profile photo URL</span>
+        <input id="profileAvatarUrl" type="url" placeholder="https://...">
+        <small>Square photos work best.</small>
+      </label>
+
+      <label class="profile-field">
+        <span>QRZ or operator link</span>
+        <input id="profileQrzUrl" type="url" placeholder="https://www.qrz.com/db/...">
+        <small>Optional external profile link.</small>
+      </label>
     </div>
 
-    <div style="margin-top:10px;">
-      <textarea id="profileBio" placeholder="Short operator bio" style="width:100%;min-height:90px;padding:12px;"></textarea>
-    </div>
-
-    <label style="display:block;margin-top:10px;">
-      <input id="profilePublic" type="checkbox" checked>
-      Make my operator profile public
+    <label class="profile-field profile-field-wide">
+      <span>About your station</span>
+      <textarea id="profileBio" placeholder="A little about you, your station, portable setup, favorite modes, or what you enjoy about activating parks."></textarea>
+      <small>Keep it friendly and useful to other operators.</small>
     </label>
 
-    <button id="saveProfileButton" style="margin-top:12px;">Save Profile</button>
-    <div id="profileSaveStatus" style="margin-top:12px;"></div>
+    <div class="profile-editor-footer">
+      <label class="profile-visibility-toggle">
+        <input id="profilePublic" type="checkbox" checked>
+        <span>
+          <strong>Public profile</strong>
+          <small>Allow your verified callsign profile and activity stats to be viewed by others.</small>
+        </span>
+      </label>
+
+      <div class="profile-editor-actions">
+        <button id="saveProfileButton">Save Profile</button>
+        <div id="profileSaveStatus"></div>
+      </div>
+    </div>
   </div>
 
 </section>
