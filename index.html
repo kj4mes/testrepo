@@ -496,6 +496,15 @@
   </div>
 </section>
 
+
+<section class="section app-panel" id="operator-profile">
+  <div class="park-detail-wrap">
+    <button id="operatorProfileBackButton" class="park-detail-button">← Back to Activity</button>
+    <div id="operatorProfileStatus" style="margin-top:18px;"></div>
+    <div id="operatorProfileContent"></div>
+  </div>
+</section>
+
 <section class="section app-panel" id="account">
 
   <h2>Operator Account</h2>
@@ -527,6 +536,33 @@
     </div>
 
     <div id="accountStatus" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="search" id="profileEditor" style="display:none;">
+    <h3>Public Operator Profile</h3>
+    <p>Choose what other City Park Waves users can see on your callsign profile.</p>
+
+    <div class="search-row">
+      <input id="profileState" type="text" placeholder="Home state (optional)" maxlength="2">
+      <input id="profileGrid" type="text" placeholder="Grid square (optional)">
+    </div>
+
+    <div class="search-row" style="margin-top:10px;">
+      <input id="profileAvatarUrl" type="url" placeholder="Avatar/photo URL (optional)">
+      <input id="profileQrzUrl" type="url" placeholder="QRZ/profile URL (optional)">
+    </div>
+
+    <div style="margin-top:10px;">
+      <textarea id="profileBio" placeholder="Short operator bio" style="width:100%;min-height:90px;padding:12px;"></textarea>
+    </div>
+
+    <label style="display:block;margin-top:10px;">
+      <input id="profilePublic" type="checkbox" checked>
+      Make my operator profile public
+    </label>
+
+    <button id="saveProfileButton" style="margin-top:12px;">Save Profile</button>
+    <div id="profileSaveStatus" style="margin-top:12px;"></div>
   </div>
 
 </section>
