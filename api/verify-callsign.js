@@ -72,8 +72,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const status = String(record.status || "").trim();
-    const active = /^active$/i.test(status);
+    const rawStatus = String(record.status || "").trim().toUpperCase();
+    // HamDB mirrors FCC status codes. "A" means Active; some responses or
+    // future providers may return the full word instead, so support both.
+    const active = rawStatus === "A" || rawStatus === "ACTIVE";
+    const status = active
+      ? "Active"
+      : (rawStatus === "E" ? "Expired" : (rawStatus || "Unknown"));
 
     return res.status(200).json({
       callsign,
@@ -81,7 +86,7 @@ export default async function handler(req, res) {
       amateur: true,
       active,
       verified: active,
-      status: status || "Unknown",
+      status,
       service: record.class || null,
       expiration: record.expires || null,
       licensee_name: record.fname && record.name
