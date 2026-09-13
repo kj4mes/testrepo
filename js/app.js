@@ -250,9 +250,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     showCreateAccountForm();
   });
 
-  openCreateAccountButton?.addEventListener("click", showCreateAccountForm);
-  cancelCreateAccountButton?.addEventListener("click", showLoginForm);
-
   menuButton.addEventListener("click", (event) => {
     event.stopPropagation();
     const isOpen = menuPanel.classList.toggle("open");
@@ -293,6 +290,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const accountInfoNote = document.getElementById("accountInfoNote");
   const accountPasswordField = document.getElementById("accountPasswordField");
   const accountUsername = document.getElementById("accountUsername");
+
+  openCreateAccountButton?.addEventListener("click", showCreateAccountForm);
+  cancelCreateAccountButton?.addEventListener("click", showLoginForm);
   const accountEmail = document.getElementById("accountEmail");
   const accountCity = document.getElementById("accountCity");
   const accountState = document.getElementById("accountState");
