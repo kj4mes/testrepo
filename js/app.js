@@ -357,15 +357,23 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     return { key: "century", label: "100+", range: "100+ activations" };
   }
 
-  function parkActivationIcon(count) {
+  function parkActivationIcon(park) {
+    const count = Math.max(0, Number(park?.activation_count || 0));
     const level = activationMarkerLevel(count);
+    const reference = String(park?.reference_code || "CPW PARK").trim();
+    const name = String(park?.name || "Park").trim();
+    const markerTitle = `${name} • ${reference} • ${count} activation${count === 1 ? "" : "s"}`;
 
     return L.divIcon({
       className: "park-activation-marker-wrap",
-      html: `<div class="park-activation-marker park-activation-${level.key}" title="${level.range}" aria-label="${level.range}"></div>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -12]
+      html:
+        `<div class="park-identity-marker" title="${escapeHTML(markerTitle)}">` +
+          `<span class="park-activation-marker park-activation-${level.key}" aria-hidden="true"></span>` +
+          `<span class="park-identity-label">${escapeHTML(reference)}</span>` +
+        `</div>`,
+      iconSize: [150, 30],
+      iconAnchor: [11, 15],
+      popupAnchor: [0, -16]
     });
   }
 
@@ -527,7 +535,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           const activationCount = Math.max(0, Number(park.activation_count || 0));
 
           L.marker([plat, plon], {
-            icon: parkActivationIcon(activationCount)
+            icon: parkActivationIcon(park)
           })
             .bindPopup(
               `<strong>${escapeHTML(park.name)}</strong><br>` +
