@@ -220,10 +220,38 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   });
 
+  function showCreateAccountForm() {
+    loginPanel.style.display = "none";
+    accountInfoPanel.style.display = "block";
+    accountInfoHeading.textContent = "Create Account";
+    accountInfoNote.textContent =
+      "Complete the information below to create your City Park Waves account.";
+    signUpButton.style.display = "inline-block";
+    saveBasicInfoButton.style.display = "none";
+    signOutButton.style.display = "none";
+    cancelCreateAccountButton.style.display = "inline-block";
+    accountPasswordField.style.display = "grid";
+    accountEmail.readOnly = false;
+    accountPassword.value = "";
+    accountStatus.textContent = "";
+    setTimeout(() => accountUsername?.focus(), 50);
+  }
+
+  function showLoginForm() {
+    accountInfoPanel.style.display = "none";
+    loginPanel.style.display = "block";
+    loginStatus.textContent = "";
+    loginPassword.value = "";
+    setTimeout(() => loginIdentifier?.focus(), 50);
+  }
+
   headerCreateAccountButton?.addEventListener("click", () => {
     showPanel("account");
-    setTimeout(() => accountUsername?.focus(), 50);
+    showCreateAccountForm();
   });
+
+  openCreateAccountButton?.addEventListener("click", showCreateAccountForm);
+  cancelCreateAccountButton?.addEventListener("click", showLoginForm);
 
   menuButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -254,6 +282,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const callsignButton = document.getElementById("callsignButton");
   const callsignStatus = document.getElementById("callsignStatus");
   const callsignResult = document.getElementById("callsignResult");
+  const loginPanel = document.getElementById("loginPanel");
+  const accountInfoPanel = document.getElementById("accountInfoPanel");
+  const loginIdentifier = document.getElementById("loginIdentifier");
+  const loginPassword = document.getElementById("loginPassword");
+  const loginStatus = document.getElementById("loginStatus");
+  const openCreateAccountButton = document.getElementById("openCreateAccountButton");
+  const cancelCreateAccountButton = document.getElementById("cancelCreateAccountButton");
+  const accountInfoHeading = document.getElementById("accountInfoHeading");
+  const accountInfoNote = document.getElementById("accountInfoNote");
+  const accountPasswordField = document.getElementById("accountPasswordField");
   const accountUsername = document.getElementById("accountUsername");
   const accountEmail = document.getElementById("accountEmail");
   const accountCity = document.getElementById("accountCity");
@@ -3478,11 +3516,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     if (!session?.user) {
       updateActivationRequirementDisplay(null);
       accountStatus.textContent = "Not signed in.";
+      loginPanel.style.display = "block";
+      accountInfoPanel.style.display = "none";
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
       saveBasicInfoButton.style.display = "none";
       signOutButton.style.display = "none";
       accountEmail.readOnly = false;
+      accountPasswordField.style.display = "grid";
+      cancelCreateAccountButton.style.display = "inline-block";
       if (headerAuthButton) {
         headerAuthButton.textContent = "Log In";
         headerAuthButton.dataset.panelLink = "account";
@@ -3506,10 +3548,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       return;
     }
 
+    loginPanel.style.display = "none";
+    accountInfoPanel.style.display = "block";
+    accountInfoHeading.textContent = "Update Account Information";
+    accountInfoNote.textContent =
+      "Update your basic account information below. Your email address is tied to your login.";
     signUpButton.style.display = "none";
     signInButton.style.display = "none";
     saveBasicInfoButton.style.display = "inline-block";
     signOutButton.style.display = "inline-block";
+    cancelCreateAccountButton.style.display = "none";
+    accountPasswordField.style.display = "none";
     accountEmail.readOnly = true;
     await loadBasicAccountProfile(session);
     if (headerAuthButton) {
@@ -3654,10 +3703,31 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   async function signIn() {
-    const email = accountEmail.value.trim();
-    const password = accountPassword.value;
+    const identifier = loginIdentifier.value.trim();
+    const password = loginPassword.value;
 
-    accountStatus.textContent = "Signing in...";
+    if (!identifier || !password) {
+      loginStatus.textContent = "Enter your username or email address and password.";
+      return;
+    }
+
+    loginStatus.textContent = "Signing in...";
+
+    let email = identifier;
+
+    if (!identifier.includes("@")) {
+      const { data: resolvedEmail, error: resolveError } =
+        await supabaseClient.rpc("cpw_login_email_for_username", {
+          p_username: identifier
+        });
+
+      if (resolveError || !resolvedEmail) {
+        loginStatus.textContent = "Invalid username/email or password.";
+        return;
+      }
+
+      email = resolvedEmail;
+    }
 
     const { error } = await supabaseClient.auth.signInWithPassword({
       email,
@@ -3665,18 +3735,23 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     });
 
     if (error) {
-      accountStatus.textContent = error.message;
+      loginStatus.textContent = "Invalid username/email or password.";
       return;
     }
 
-    accountPassword.value = "";
+    loginPassword.value = "";
+    loginStatus.textContent = "";
     await refreshAccountStatus();
+    showPanel("dashboard");
   }
 
   async function signOut() {
     await supabaseClient.auth.signOut();
     accountPassword.value = "";
+    loginPassword.value = "";
     await refreshAccountStatus();
+    showPanel("account");
+    showLoginForm();
   }
 
   signUpButton.addEventListener("click", createAccount);
