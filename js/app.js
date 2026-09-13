@@ -168,6 +168,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const panelLinks = Array.from(document.querySelectorAll("[data-panel-link]"));
   const appPanels = Array.from(document.querySelectorAll(".app-panel"));
   let currentUserIsAdmin = false;
+  let adminUsersLoadVersion = 0;
 
   function showPanel(panelId, updateHash = true) {
     const adminPanel =
@@ -3240,10 +3241,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   async function loadAdminUsers() {
     if (!adminUsersResults || !currentUserIsAdmin) return;
 
+    const loadVersion = ++adminUsersLoadVersion;
     adminUsersStatus.textContent = "Loading user accounts...";
-    adminUsersResults.innerHTML = "";
 
     const { data, error } = await supabaseClient.rpc("admin_list_users");
+
+    if (loadVersion !== adminUsersLoadVersion) return;
 
     if (error) {
       console.error(error);
@@ -3251,7 +3254,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       return;
     }
 
-    const users = Array.isArray(data) ? data : [];
+    const rawUsers = Array.isArray(data) ? data : [];
+    const users = Array.from(
+      new Map(rawUsers.map((user) => [String(user.id), user])).values()
+    );
+
+    adminUsersResults.innerHTML = "";
 
     adminUserCount.textContent = users.length.toLocaleString();
     adminVerifiedCount.textContent =
