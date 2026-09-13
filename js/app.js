@@ -161,6 +161,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     showPanel("parks", false);
   });
 
+  const headerAuthButton = document.getElementById("headerAuthButton");
   const menuButton = document.getElementById("menuButton");
   const menuPanel = document.getElementById("menuPanel");
   const panelLinks = Array.from(document.querySelectorAll("[data-panel-link]"));
@@ -203,6 +204,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       event.preventDefault();
       showPanel(link.dataset.panelLink);
     });
+  });
+
+  headerAuthButton?.addEventListener("click", async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data?.session?.user) {
+      showPanel("dashboard");
+    } else {
+      showPanel("account");
+    }
   });
 
   menuButton.addEventListener("click", (event) => {
@@ -3132,6 +3142,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
       signOutButton.style.display = "none";
+      if (headerAuthButton) {
+        headerAuthButton.textContent = "Log In";
+        headerAuthButton.dataset.panelLink = "account";
+        headerAuthButton.classList.remove("signed-in");
+      }
       profileEditor.style.display = "none";
       currentUserIsAdmin = false;
       document.body.classList.remove("admin-user");
@@ -3146,6 +3161,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     signUpButton.style.display = "none";
     signInButton.style.display = "none";
     signOutButton.style.display = "inline-block";
+    if (headerAuthButton) {
+      headerAuthButton.textContent = "Dashboard";
+      headerAuthButton.dataset.panelLink = "dashboard";
+      headerAuthButton.classList.add("signed-in");
+    }
 
     const { data: operator } = await supabaseClient
       .from("operators")
