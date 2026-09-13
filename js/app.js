@@ -928,7 +928,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     });
   }
 
-  refreshParkDetailSuggestionsButton.addEventListener("click", loadParkDetailSuggestions);
+  if (refreshParkDetailSuggestionsButton) {
+    refreshParkDetailSuggestionsButton.addEventListener("click", loadParkDetailSuggestions);
+  }
   async function loadQualityReviewParks() {
     qualityReviewResults.innerHTML = "";
     qualityReviewStatus.textContent = "Loading flagged parks...";
@@ -2102,6 +2104,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     if (operator?.is_admin) {
       loadPendingParkSubmissions();
+      if (parkDetailSuggestionsStatus && parkDetailSuggestionsResults) {
+        loadParkDetailSuggestions();
+      }
       loadQualityReviewParks();
     }
 
