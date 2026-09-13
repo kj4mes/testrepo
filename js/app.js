@@ -240,6 +240,18 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const signInButton = document.getElementById("signInButton");
   const signOutButton = document.getElementById("signOutButton");
   const accountStatus = document.getElementById("accountStatus");
+  const operatorProfileStatus = document.getElementById("operatorProfileStatus");
+  const operatorProfileContent = document.getElementById("operatorProfileContent");
+  const operatorProfileBackButton = document.getElementById("operatorProfileBackButton");
+  const profileEditor = document.getElementById("profileEditor");
+  const profileState = document.getElementById("profileState");
+  const profileGrid = document.getElementById("profileGrid");
+  const profileAvatarUrl = document.getElementById("profileAvatarUrl");
+  const profileQrzUrl = document.getElementById("profileQrzUrl");
+  const profileBio = document.getElementById("profileBio");
+  const profilePublic = document.getElementById("profilePublic");
+  const saveProfileButton = document.getElementById("saveProfileButton");
+  const profileSaveStatus = document.getElementById("profileSaveStatus");
   const activationParkSearch = document.getElementById("activationParkSearch");
   const activationParkSearchButton = document.getElementById("activationParkSearchButton");
   const activationParkStatus = document.getElementById("activationParkStatus");
@@ -1985,6 +1997,67 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     });
   }
 
+  async function openOperatorProfile(callsign) {
+    const call = String(callsign || "").trim().toUpperCase();
+    if (!call) return;
+
+    operatorProfileStatus.textContent = "Loading operator profile...";
+    operatorProfileContent.innerHTML = "";
+    showPanel("operator-profile", false);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("operator", call);
+    url.hash = "operator-profile";
+    history.replaceState(null, "", url);
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_operator_profile", { p_callsign: call });
+      if (error) throw error;
+      if (!data?.operator) {
+        operatorProfileStatus.textContent = "That operator profile is not public or could not be found.";
+        return;
+      }
+
+      const op = data.operator;
+      const stats = data.stats || {};
+      const bands = Array.isArray(data.top_bands) ? data.top_bands : [];
+      const modes = Array.isArray(data.top_modes) ? data.top_modes : [];
+      const recent = Array.isArray(data.recent_activations) ? data.recent_activations : [];
+
+      operatorProfileStatus.textContent = "";
+      const avatarHtml = op.avatar_url
+        ? '<img class="operator-profile-avatar" src="' + escapeHTML(op.avatar_url) + '" alt="' + escapeHTML(op.callsign) + '">'
+        : '<div class="operator-profile-avatar operator-profile-avatar-fallback">📡</div>';
+      const locationHtml = escapeHTML([op.state, op.grid].filter(Boolean).join(" • "));
+      const licenseHtml = op.license_class ? '<div>' + escapeHTML(op.license_class) + ' class</div>' : "";
+      const bioHtml = op.bio ? '<p class="operator-profile-bio">' + escapeHTML(op.bio) + '</p>' : "";
+      const linkHtml = op.qrz_url ? '<p><a class="map-link" href="' + escapeHTML(op.qrz_url) + '" target="_blank" rel="noopener noreferrer">Operator Link</a></p>' : "";
+
+      const bandsHtml = bands.length ? bands.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.band) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No band data yet.</p>";
+      const modesHtml = modes.length ? modes.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.mode) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No mode data yet.</p>";
+      const recentHtml = recent.length ? recent.map((item) => {
+        const ref = item.reference_code ? " • " + escapeHTML(item.reference_code) : "";
+        return '<div class="recent-activation-row"><div><strong>' + escapeHTML(item.park_name) + '</strong>' + ref + '</div><div>' + escapeHTML([item.city, item.state].filter(Boolean).join(", ")) + " • " + Number(item.qso_count || 0).toLocaleString() + " QSOs • " + escapeHTML(activityDate(item.activation_at)) + '</div></div>';
+      }).join("") : "<p>No activations yet.</p>";
+
+      operatorProfileContent.innerHTML =
+        '<div class="operator-profile-card"><div class="operator-profile-head">' + avatarHtml + '<div><h2>' + escapeHTML(op.callsign) + '</h2><div>' + locationHtml + '</div>' + licenseHtml + '</div></div>' + bioHtml + linkHtml + '</div>' +
+        '<div class="park-detail-stats"><div class="park-detail-stat"><strong>' + Number(stats.unique_parks || 0).toLocaleString() + '</strong>Unique Parks</div><div class="park-detail-stat"><strong>' + Number(stats.activations || 0).toLocaleString() + '</strong>Activations</div><div class="park-detail-stat"><strong>' + Number(stats.qsos || 0).toLocaleString() + '</strong>QSOs</div></div>' +
+        '<div class="operator-profile-grid"><div class="park-detail-card"><h3>Top Bands</h3>' + bandsHtml + '</div><div class="park-detail-card"><h3>Top Modes</h3>' + modesHtml + '</div></div>' +
+        '<div class="park-detail-card"><h3>Recent Activations</h3>' + recentHtml + '</div>';
+    } catch (error) {
+      console.error(error);
+      operatorProfileStatus.textContent = "Unable to load operator profile.";
+    }
+  }
+
+  operatorProfileBackButton.addEventListener("click", () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("operator");
+    url.hash = "activity";
+    history.replaceState(null, "", url);
+    showPanel("activity", false);
+  });
   async function loadPublicActivity() {
     publicActivityStatus.textContent = "Loading recent activity...";
     publicActivityFeed.innerHTML = "";
