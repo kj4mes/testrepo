@@ -48,6 +48,10 @@
     Log In
   </button>
 
+  <button id="headerCreateAccountButton" class="header-create-account-button" type="button">
+    Create Account
+  </button>
+
   <div class="menu-wrap">
     <button
       id="menuButton"
@@ -710,25 +714,53 @@
     Create an account or sign in. Your verified callsign will be linked to this account.
   </p>
 
-  <div class="search">
-    <div class="search-row">
-      <input
-        id="accountEmail"
-        type="email"
-        placeholder="Email address"
-        autocomplete="email"
-      >
-      <input
-        id="accountPassword"
-        type="password"
-        placeholder="Password (6+ characters)"
-        autocomplete="current-password"
-      >
+  <div class="search account-basic-card">
+    <h3>Basic Account Information</h3>
+    <p class="account-basic-note">
+      Email and street address are account information and are not shown on your public operator profile.
+    </p>
+
+    <div class="account-basic-grid">
+      <label class="profile-field">
+        <span>Username</span>
+        <input id="accountUsername" type="text" maxlength="30" placeholder="Choose a username" autocomplete="username">
+      </label>
+
+      <label class="profile-field">
+        <span>Email address</span>
+        <input id="accountEmail" type="email" placeholder="Email address" autocomplete="email">
+      </label>
+
+      <label class="profile-field">
+        <span>City</span>
+        <input id="accountCity" type="text" maxlength="80" placeholder="Grand Ledge">
+      </label>
+
+      <label class="profile-field">
+        <span>State</span>
+        <input id="accountState" type="text" maxlength="2" placeholder="MI" autocapitalize="characters">
+      </label>
+
+      <label class="profile-field">
+        <span>Grid square</span>
+        <input id="accountGrid" type="text" maxlength="8" placeholder="EN72os">
+      </label>
+
+      <label class="profile-field account-address-field">
+        <span>Street address</span>
+        <input id="accountAddress" type="text" maxlength="160" placeholder="Street address" autocomplete="street-address">
+      </label>
+
+      <label class="profile-field">
+        <span>Password</span>
+        <input id="accountPassword" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+      </label>
     </div>
 
-    <div style="margin-top:12px;">
+    <div class="account-basic-actions">
       <button id="signUpButton">Create Account</button>
       <button id="signInButton">Sign In</button>
+      <button id="saveBasicInfoButton" style="display:none;">Save Basic Info</button>
       <button id="signOutButton" style="display:none;">Sign Out</button>
     </div>
 
