@@ -3258,15 +3258,41 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     } catch (error) {
       console.error(error);
       const message = String(error?.message || "");
-      accountStatus.textContent = message.toLowerCase().includes("username")
+      const lowerMessage = message.toLowerCase();
+
+      if (
+        lowerMessage.includes("user_profiles_auth_user_id_fkey") ||
+        lowerMessage.includes("foreign key constraint")
+      ) {
+        await supabaseClient.auth.signOut({ scope: "local" });
+        accountStatus.textContent =
+          "Your saved browser session belonged to an old test account that no longer exists. " +
+          "Please sign in again with your current beta account, then save your information.";
+        await refreshAccountStatus();
+        return;
+      }
+
+      accountStatus.textContent = lowerMessage.includes("username")
         ? "That username is already in use. Choose another username."
-        : "Unable to save account information: " + message;
+        : "Unable to save account information. Please try again.";
     }
   }
 
   async function refreshAccountStatus() {
     const { data } = await supabaseClient.auth.getSession();
-    const session = data?.session;
+    let session = data?.session;
+
+    if (session?.user) {
+      const { data: verifiedUserData, error: verifiedUserError } =
+        await supabaseClient.auth.getUser();
+
+      if (verifiedUserError || !verifiedUserData?.user) {
+        await supabaseClient.auth.signOut({ scope: "local" });
+        session = null;
+        accountStatus.textContent =
+          "Your previous test login is no longer valid. Sign in again with your current account.";
+      }
+    }
 
     if (!session?.user) {
       updateActivationRequirementDisplay(null);
