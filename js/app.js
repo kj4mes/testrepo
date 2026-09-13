@@ -344,6 +344,60 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let nearbyLayer = null;
   let lastNearbySearch = null;
 
+  function activationMarkerLevel(count) {
+    const value = Math.max(0, Number(count || 0));
+
+    if (value === 0) return { key: "none", label: "0", range: "0 activations" };
+    if (value <= 4) return { key: "low", label: "1–4", range: "1–4 activations" };
+    if (value <= 9) return { key: "moderate", label: "5–9", range: "5–9 activations" };
+    if (value <= 24) return { key: "active", label: "10–24", range: "10–24 activations" };
+    if (value <= 49) return { key: "busy", label: "25–49", range: "25–49 activations" };
+    if (value <= 99) return { key: "hot", label: "50–99", range: "50–99 activations" };
+
+    return { key: "century", label: "100+", range: "100+ activations" };
+  }
+
+  function parkActivationIcon(count) {
+    const level = activationMarkerLevel(count);
+
+    return L.divIcon({
+      className: "park-activation-marker-wrap",
+      html: `<div class="park-activation-marker park-activation-${level.key}" title="${level.range}" aria-label="${level.range}"></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -12]
+    });
+  }
+
+  function addActivationLegend(map) {
+    const legend = L.control({ position: "bottomright" });
+
+    legend.onAdd = function() {
+      const div = L.DomUtil.create("div", "activation-map-legend");
+      const levels = [
+        ["none", "0"],
+        ["low", "1–4"],
+        ["moderate", "5–9"],
+        ["active", "10–24"],
+        ["busy", "25–49"],
+        ["hot", "50–99"],
+        ["century", "100+"]
+      ];
+
+      div.innerHTML =
+        '<div class="activation-map-legend-title">Activations</div>' +
+        levels.map(([key, label]) =>
+          `<div class="activation-map-legend-row"><span class="activation-map-legend-dot park-activation-${key}"></span><span>${label}</span></div>`
+        ).join("");
+
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+      return div;
+    };
+
+    legend.addTo(map);
+  }
+
   function ensureNearbyMap(lat, lon) {
     if (nearbyMap) {
       nearbyMap.remove();
@@ -364,6 +418,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }).addTo(nearbyMap);
 
     nearbyLayer = L.layerGroup().addTo(nearbyMap);
+    addActivationLegend(nearbyMap);
 
     const userLocationIcon = L.divIcon({
       className: "user-location-star-icon",
@@ -469,10 +524,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         if (Number.isFinite(plat) && Number.isFinite(plon)) {
           bounds.push([plat, plon]);
 
-          L.marker([plat, plon])
+          const activationCount = Math.max(0, Number(park.activation_count || 0));
+
+          L.marker([plat, plon], {
+            icon: parkActivationIcon(activationCount)
+          })
             .bindPopup(
               `<strong>${escapeHTML(park.name)}</strong><br>` +
-              `${Number(park.distance_miles).toFixed(1)} mi away`
+              `${Number(park.distance_miles).toFixed(1)} mi away<br>` +
+              `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}`
             )
             .addTo(nearbyLayer);
         }
