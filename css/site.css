@@ -2667,3 +2667,33 @@
     font-size: 10px;
   }
 }
+
+
+.header-auth-button {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border: 1px solid #b9cacc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #17324d;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 3px 10px rgba(23,50,77,.06);
+}
+
+.header-auth-button:hover {
+  background: #eef8f6;
+}
+
+.header-auth-button.signed-in {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .header-auth-button {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+}
