@@ -3729,20 +3729,35 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       email = resolvedEmail;
     }
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data: signInData, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error) {
+    if (error || !signInData?.session?.user) {
       loginStatus.textContent = "Invalid username/email or password.";
       return;
     }
 
     loginPassword.value = "";
-    loginStatus.textContent = "";
-    await refreshAccountStatus();
+    loginStatus.textContent = "Signed in. Opening your dashboard...";
+
+    // The password has already been accepted by Supabase. Move the user to the
+    // dashboard immediately rather than making the login button wait for every
+    // profile/admin/dashboard refresh to finish.
     showPanel("dashboard");
+
+    window.setTimeout(async () => {
+      try {
+        await refreshAccountStatus();
+        await loadMyActivations();
+        await quickLoggerRefreshOperator();
+        await loadDashboard();
+      } catch (refreshError) {
+        console.error("Post-login refresh failed:", refreshError);
+      }
+    }, 0);
   }
 
   async function signOut() {
@@ -3760,10 +3775,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   signOutButton.addEventListener("click", signOut);
 
   supabaseClient.auth.onAuthStateChange(() => {
-    refreshAccountStatus();
-    loadMyActivations();
-    quickLoggerRefreshOperator();
-    loadDashboard();
+    // Defer Supabase/database work until the auth callback has returned.
+    // This prevents auth-state processing from competing with sign-in itself.
+    window.setTimeout(() => {
+      refreshAccountStatus();
+      loadMyActivations();
+      quickLoggerRefreshOperator();
+      loadDashboard();
+    }, 0);
   });
 
   const initialParams = new URLSearchParams(window.location.search);
