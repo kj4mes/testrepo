@@ -1489,4 +1489,15 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.park-identity-marker:hover .park-identity-label,
+.park-identity-marker.show-identity .park-identity-label {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
 }
