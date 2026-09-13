@@ -40,10 +40,8 @@
   <nav class="top-tabs" aria-label="Primary navigation">
     <a href="#home" data-panel-link="home">Home</a>
     <a href="#parks" data-panel-link="parks">Find Parks</a>
-    <a href="#activate" data-panel-link="activate">Activate</a>
-    <a href="#quick-logger" data-panel-link="quick-logger">Quick Logger</a>
     <a href="#activity" data-panel-link="activity">Activity</a>
-    <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
+    <a href="#dashboard" data-panel-link="dashboard">Dashboard</a>
   </nav>
 
   <div class="menu-wrap">
@@ -58,14 +56,10 @@
     <nav id="menuPanel" class="menu-panel" aria-label="More navigation">
       <a href="#home" data-panel-link="home">Home</a>
       <a href="#parks" data-panel-link="parks">Find Parks</a>
-      <a href="#activate" data-panel-link="activate">Submit Activation</a>
-      <a href="#quick-logger" data-panel-link="quick-logger">Quick Logger</a>
       <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
-      <a href="#my-activations" data-panel-link="my-activations">My Activations</a>
+      <a href="#dashboard" data-panel-link="dashboard">Operator Dashboard</a>
       <div class="menu-separator"></div>
       <a href="#submit-park" data-panel-link="submit-park">Submit a Missing Park</a>
-      <a href="#account" data-panel-link="account">Account</a>
-      <a href="#callsign" data-panel-link="callsign">Verify Callsign</a>
       <a href="#rules" data-panel-link="rules">Activation Rules</a>
       <a href="#achievements" data-panel-link="achievements">Achievements</a>
       <a href="#feedback" data-panel-link="feedback">Suggestions & Feedback</a>
@@ -91,7 +85,7 @@
 
         <div class="hero-actions">
           <a class="button primary" href="#parks" data-panel-link="parks">📍 Find a Park</a>
-          <a class="button secondary" href="#activate" data-panel-link="activate">📡 Submit ADIF Log</a>
+          <a class="button secondary" href="#dashboard" data-panel-link="dashboard">📡 Operator Dashboard</a>
         </div>
       </div>
 
@@ -119,16 +113,16 @@
 
       <article class="home-action-card blue">
         <div class="home-action-icon">📡</div>
-        <h3>Activate</h3>
-        <p>Operate from a listed park, then upload your ADIF log afterward.</p>
-        <a class="home-card-link" href="#activate" data-panel-link="activate">Start Activating →</a>
+        <h3>Operator Dashboard</h3>
+        <p>Submit activation logs, use the Quick Logger, and manage your operator activity.</p>
+        <a class="home-card-link" href="#dashboard" data-panel-link="dashboard">Open Dashboard →</a>
       </article>
 
       <article class="home-action-card yellow">
         <div class="home-action-icon">⭐</div>
-        <h3>My Activations</h3>
-        <p>See your submitted activations, QSO totals, and park history.</p>
-        <a class="home-card-link" href="#my-activations" data-panel-link="my-activations">View Mine →</a>
+        <h3>Recent Activity</h3>
+        <p>See recent park activations and how operators are putting local parks on the air.</p>
+        <a class="home-card-link" href="#activity" data-panel-link="activity">See Activity →</a>
       </article>
 
       <article class="home-action-card coral">
@@ -382,7 +376,64 @@
 
 </section>
 
+<section class="section app-panel" id="dashboard">
+  <div class="dashboard-shell">
+    <div class="dashboard-heading">
+      <div>
+        <div class="dashboard-kicker">Operator center</div>
+        <h2>My City Park Waves Dashboard</h2>
+        <p>Everything tied to your operator account lives here: logging, activation history, profile, and progress.</p>
+      </div>
+      <div id="dashboardCallsignBadge" class="dashboard-callsign-badge">Not signed in</div>
+    </div>
+
+    <div id="dashboardSignedOut" class="dashboard-welcome-card">
+      <div class="dashboard-welcome-icon">📡</div>
+      <div>
+        <h3>Sign in to your operator dashboard</h3>
+        <p>You can browse parks and public activity without an account. Sign in when you're ready to log an activation or manage your operator profile.</p>
+        <button type="button" data-panel-link="account">Sign In / Create Account</button>
+      </div>
+    </div>
+
+    <div id="dashboardSignedIn" style="display:none;">
+      <div id="dashboardWelcome" class="dashboard-welcome-card"></div>
+
+      <div class="dashboard-stats" aria-label="Your City Park Waves statistics">
+        <div class="dashboard-stat"><span>📡</span><strong id="dashboardStatActivations">0</strong><small>Activations</small></div>
+        <div class="dashboard-stat"><span>🌳</span><strong id="dashboardStatParks">0</strong><small>Unique Parks</small></div>
+        <div class="dashboard-stat"><span>💬</span><strong id="dashboardStatQsos">0</strong><small>Logged QSOs</small></div>
+      </div>
+
+      <div class="dashboard-actions">
+        <button class="dashboard-action primary" type="button" data-panel-link="activate">
+          <span class="dashboard-action-icon">⬆️</span>
+          <span><strong>Submit Activation</strong><small>Upload an .adi or .adif log and verify the activator automatically.</small></span>
+        </button>
+        <button class="dashboard-action" type="button" data-panel-link="quick-logger">
+          <span class="dashboard-action-icon">📱</span>
+          <span><strong>Quick Logger</strong><small>Log contacts from your phone while you're operating in the park.</small></span>
+        </button>
+        <button class="dashboard-action" type="button" data-panel-link="my-activations">
+          <span class="dashboard-action-icon">🗂️</span>
+          <span><strong>My Activations</strong><small>Review your submitted parks, QSO totals, and activation history.</small></span>
+        </button>
+        <button class="dashboard-action" type="button" data-panel-link="account">
+          <span class="dashboard-action-icon">👤</span>
+          <span><strong>Profile & Account</strong><small>Edit your public operator profile and account settings.</small></span>
+        </button>
+        <button class="dashboard-action" type="button" data-panel-link="achievements">
+          <span class="dashboard-action-icon">🏅</span>
+          <span><strong>Achievements</strong><small>See the milestones available as your City Park Waves activity grows.</small></span>
+        </button>
+      </div>
+    </div>
+    <div id="dashboardStatus" class="dashboard-status"></div>
+  </div>
+</section>
+
 <section class="section app-panel" id="activate">
+  <button class="dashboard-back-button" type="button" data-panel-link="dashboard">← Dashboard</button>
 
   <h2>Submit a Park Activation</h2>
 
@@ -461,6 +512,7 @@
 
 <section class="section app-panel" id="quick-logger">
   <div class="quick-logger-shell">
+    <button class="dashboard-back-button" type="button" data-panel-link="dashboard">← Dashboard</button>
     <div class="quick-logger-heading">
       <div>
         <div class="quick-logger-kicker">Mobile beta</div>
@@ -585,6 +637,7 @@
 </section>
 
 <section class="section app-panel" id="my-activations">
+  <button class="dashboard-back-button" type="button" data-panel-link="dashboard">← Dashboard</button>
 
   <h2>My Activations</h2>
 
@@ -645,8 +698,9 @@
 </section>
 
 <section class="section app-panel" id="account">
+  <button class="dashboard-back-button" type="button" data-panel-link="dashboard">← Dashboard</button>
 
-  <h2>Operator Account</h2>
+  <h2>Account & Operator Profile</h2>
 
   <p>
     Create an account or sign in. Your verified callsign will be linked to this account.
