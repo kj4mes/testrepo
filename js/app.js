@@ -422,6 +422,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const leaderboardResults = document.getElementById("leaderboardResults");
   const leaderboardMonthButton = document.getElementById("leaderboardMonthButton");
   const leaderboardAllButton = document.getElementById("leaderboardAllButton");
+  const refreshHunterStatsButton = document.getElementById("refreshHunterStatsButton");
+  const hunterSummaryHunters = document.getElementById("hunterSummaryHunters");
+  const hunterSummaryQsos = document.getElementById("hunterSummaryQsos");
+  const hunterSummaryParks = document.getElementById("hunterSummaryParks");
+  const hunterSummaryActivators = document.getElementById("hunterSummaryActivators");
+  const hunterCallsignInput = document.getElementById("hunterCallsignInput");
+  const hunterCallsignButton = document.getElementById("hunterCallsignButton");
+  const hunterProfileStatus = document.getElementById("hunterProfileStatus");
+  const hunterProfileResults = document.getElementById("hunterProfileResults");
+  const hunterLeaderboardStatus = document.getElementById("hunterLeaderboardStatus");
+  const hunterLeaderboardResults = document.getElementById("hunterLeaderboardResults");
 
   let selectedActivationPark = null;
   let parsedAdifRecords = [];
@@ -2806,6 +2817,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       await loadMyActivations();
       await loadPublicActivity();
       await loadLeaderboard("all");
+      await refreshHunterStats();
       await loadHomeStats();
     } catch (error) {
       console.error(error);
@@ -3064,6 +3076,181 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   leaderboardMonthButton.addEventListener("click", () => loadLeaderboard("month"));
   leaderboardAllButton.addEventListener("click", () => loadLeaderboard("all"));
+
+
+  async function loadHunterSummary() {
+    if (!hunterSummaryHunters) return;
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_hunter_summary");
+      if (error) throw error;
+
+      hunterSummaryHunters.textContent = Number(data?.hunters || 0).toLocaleString();
+      hunterSummaryQsos.textContent = Number(data?.hunter_qsos || 0).toLocaleString();
+      hunterSummaryParks.textContent = Number(data?.parks_hunted || 0).toLocaleString();
+      hunterSummaryActivators.textContent = Number(data?.activators_worked || 0).toLocaleString();
+    } catch (error) {
+      console.error("Unable to load hunter summary:", error);
+    }
+  }
+
+  async function loadHunterLeaderboard() {
+    if (!hunterLeaderboardResults) return;
+
+    hunterLeaderboardStatus.textContent = "Loading hunter leaderboard...";
+    hunterLeaderboardResults.innerHTML = "";
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_hunter_leaderboard", {
+        p_limit: 25
+      });
+
+      if (error) throw error;
+
+      const rows = Array.isArray(data) ? data : [];
+
+      if (!rows.length) {
+        hunterLeaderboardStatus.textContent = "No hunter contacts have been logged yet.";
+        return;
+      }
+
+      hunterLeaderboardStatus.textContent = "";
+
+      rows.forEach((hunter, index) => {
+        const row = document.createElement("div");
+        row.className = "hunter-leaderboard-row";
+        row.innerHTML = `
+          <div class="hunter-rank">${index + 1}</div>
+          <div><button type="button" class="hunter-call-link" data-hunter-call="${escapeHTML(hunter.callsign)}">${escapeHTML(hunter.callsign)}</button></div>
+          <div class="hunter-num">${Number(hunter.unique_parks || 0).toLocaleString()}</div>
+          <div class="hunter-num">${Number(hunter.qsos || 0).toLocaleString()}</div>
+        `;
+
+        const button = row.querySelector("[data-hunter-call]");
+        button?.addEventListener("click", () => {
+          hunterCallsignInput.value = button.dataset.hunterCall || "";
+          loadHunterProfile(button.dataset.hunterCall);
+        });
+
+        hunterLeaderboardResults.appendChild(row);
+      });
+    } catch (error) {
+      console.error(error);
+      hunterLeaderboardStatus.textContent = "Unable to load hunter leaderboard.";
+    }
+  }
+
+  async function loadHunterProfile(callsignValue = hunterCallsignInput?.value) {
+    if (!hunterProfileResults) return;
+
+    const callsign = String(callsignValue || "").trim().toUpperCase();
+
+    if (!callsign) {
+      hunterProfileStatus.textContent = "Enter a callsign.";
+      hunterProfileResults.innerHTML = "";
+      return;
+    }
+
+    hunterCallsignInput.value = callsign;
+    hunterProfileStatus.textContent = "Loading hunter stats...";
+    hunterProfileResults.innerHTML = "";
+
+    try {
+      const { data, error } = await supabaseClient.rpc("cpw_hunter_profile", {
+        p_callsign: callsign
+      });
+
+      if (error) throw error;
+
+      if (!data?.callsign) {
+        hunterProfileStatus.textContent = "No City Park Waves hunter contacts were found for that callsign.";
+        return;
+      }
+
+      const stats = data.stats || {};
+      const bands = Array.isArray(data.bands) ? data.bands : [];
+      const modes = Array.isArray(data.modes) ? data.modes : [];
+      const recent = Array.isArray(data.recent) ? data.recent : [];
+
+      hunterProfileStatus.textContent = "";
+
+      const bandsHtml = bands.length
+        ? bands.map((item) => `<span class="hunter-chip">${escapeHTML(item.band)} <strong>${Number(item.qsos || 0).toLocaleString()}</strong></span>`).join("")
+        : '<span class="hunter-muted">No band data</span>';
+
+      const modesHtml = modes.length
+        ? modes.map((item) => `<span class="hunter-chip">${escapeHTML(item.mode)} <strong>${Number(item.qsos || 0).toLocaleString()}</strong></span>`).join("")
+        : '<span class="hunter-muted">No mode data</span>';
+
+      const recentHtml = recent.length
+        ? recent.map((item) => `
+            <div class="hunter-recent-row">
+              <div>
+                <strong>${escapeHTML(item.park_name || "Park")}</strong>
+                ${item.reference_code ? " • " + escapeHTML(item.reference_code) : ""}
+              </div>
+              <div class="hunter-recent-meta">
+                Worked ${escapeHTML(item.activator_callsign || "activator")}
+                ${item.band ? " • " + escapeHTML(item.band) : ""}
+                ${item.mode ? " • " + escapeHTML(item.mode) : ""}
+                • ${escapeHTML(activityDate(item.qso_datetime))}
+              </div>
+            </div>
+          `).join("")
+        : '<div class="hunter-muted">No recent hunter QSOs.</div>';
+
+      hunterProfileResults.innerHTML = `
+        <div class="hunter-profile-card">
+          <div class="hunter-profile-head">
+            <div>
+              <div class="dashboard-kicker">Hunter Callsign</div>
+              <h3>${escapeHTML(data.callsign)}</h3>
+            </div>
+            <div class="hunter-profile-icon">🎯</div>
+          </div>
+
+          <div class="hunter-profile-stats">
+            <div><strong>${Number(stats.unique_parks || 0).toLocaleString()}</strong><span>Unique Parks</span></div>
+            <div><strong>${Number(stats.qsos || 0).toLocaleString()}</strong><span>QSOs</span></div>
+            <div><strong>${Number(stats.activators_worked || 0).toLocaleString()}</strong><span>Activators</span></div>
+            <div><strong>${Number(stats.states_hunted || 0).toLocaleString()}</strong><span>States</span></div>
+          </div>
+
+          <div class="hunter-profile-grid">
+            <div>
+              <h4>Top Bands</h4>
+              <div class="hunter-chip-wrap">${bandsHtml}</div>
+            </div>
+            <div>
+              <h4>Top Modes</h4>
+              <div class="hunter-chip-wrap">${modesHtml}</div>
+            </div>
+          </div>
+
+          <div class="hunter-profile-section">
+            <h4>Recent Hunts</h4>
+            ${recentHtml}
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      console.error(error);
+      hunterProfileStatus.textContent = "Unable to load hunter stats.";
+    }
+  }
+
+  async function refreshHunterStats() {
+    await Promise.all([
+      loadHunterSummary(),
+      loadHunterLeaderboard()
+    ]);
+  }
+
+  refreshHunterStatsButton?.addEventListener("click", refreshHunterStats);
+  hunterCallsignButton?.addEventListener("click", () => loadHunterProfile());
+  hunterCallsignInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loadHunterProfile();
+  });
 
   async function loadDashboard() {
     if (!dashboardSignedOut || !dashboardSignedIn) return;
@@ -3802,6 +3989,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   loadHomeStats();
   loadPublicActivity();
   loadLeaderboard("all");
+  refreshHunterStats();
   refreshAccountStatus();
   loadMyActivations();
   loadDashboard();
