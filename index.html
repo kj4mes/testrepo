@@ -66,6 +66,7 @@
       <a href="#callsign" data-panel-link="callsign">Verify Callsign</a>
       <a href="#rules" data-panel-link="rules">Activation Rules</a>
       <a href="#achievements" data-panel-link="achievements">Achievements</a>
+      <a href="#feedback" data-panel-link="feedback">Suggestions & Feedback</a>
       <a href="#about" data-panel-link="about">About</a>
       <div class="menu-separator admin-menu-item"></div>
       <a class="admin-menu-item" href="#admin-review" data-panel-link="admin-review">Admin: Review Parks</a>
@@ -279,6 +280,15 @@
   <p>
     Review community-submitted parks and clean up existing park records.
   </p>
+
+
+  <div class="search">
+    <h3>Beta Feedback</h3>
+    <p>Review suggestions, bugs, usability notes, and other comments submitted by signed-in testers.</p>
+    <button id="refreshFeedbackButton">Refresh Feedback</button>
+    <div id="adminFeedbackStatus" style="margin-top:14px;"></div>
+    <div id="adminFeedbackResults" class="admin-feedback-results"></div>
+  </div>
 
   <div class="search">
     <h3>Pending Park Submissions</h3>
@@ -794,6 +804,46 @@
 
   <div class="rule-callout">
     More achievement levels can be added over time as the program grows. Existing logs will count automatically toward any future milestones.
+  </div>
+</section>
+
+
+<section class="section app-panel" id="feedback">
+  <h2>Suggestions & Feedback</h2>
+  <p>
+    City Park Waves is still growing. If you find a bug, confusing workflow, bad park data, or have an idea that would make the program better, send it here.
+  </p>
+
+  <div class="feedback-shell">
+    <div class="feedback-callout">
+      <div class="feedback-callout-icon">💬</div>
+      <div>
+        <strong>Beta feedback goes directly to the site administrator.</strong>
+        <p>Your email address is not included in the feedback record. If you're signed in, your callsign is attached so we can understand the report in context.</p>
+      </div>
+    </div>
+
+    <label class="profile-field">
+      <span>What kind of feedback is this?</span>
+      <select id="feedbackCategory">
+        <option value="bug">🐛 Bug / something isn't working</option>
+        <option value="idea">💡 Feature idea</option>
+        <option value="park_data">🌳 Park information or map data</option>
+        <option value="usability">🧭 Usability / something is confusing</option>
+        <option value="other">💬 Other comment</option>
+      </select>
+    </label>
+
+    <label class="profile-field profile-field-wide">
+      <span>Tell us what you noticed</span>
+      <textarea id="feedbackMessage" maxlength="4000" placeholder="What happened, what did you expect, or what would you like to see?"></textarea>
+      <small>Helpful details are appreciated. Please don't include passwords or other sensitive information.</small>
+    </label>
+
+    <div class="feedback-actions">
+      <button id="submitFeedbackButton">Send Feedback</button>
+      <div id="feedbackStatus"></div>
+    </div>
   </div>
 </section>
 
