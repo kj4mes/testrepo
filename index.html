@@ -41,6 +41,7 @@
     <a href="#home" data-panel-link="home">Home</a>
     <a href="#parks" data-panel-link="parks">Find Parks</a>
     <a href="#activity" data-panel-link="activity">Activity</a>
+    <a href="#hunters" data-panel-link="hunters">Hunters</a>
     <a href="#dashboard" data-panel-link="dashboard">Dashboard</a>
   </nav>
 
@@ -65,6 +66,7 @@
       <a href="#home" data-panel-link="home">Home</a>
       <a href="#parks" data-panel-link="parks">Find Parks</a>
       <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
+      <a href="#hunters" data-panel-link="hunters">Hunter Stats</a>
       <a href="#dashboard" data-panel-link="dashboard">Operator Dashboard</a>
       <div class="menu-separator"></div>
       <a href="#submit-park" data-panel-link="submit-park">Submit a Missing Park</a>
@@ -728,6 +730,51 @@
 </section>
 
 
+
+<section class="section app-panel" id="hunters">
+  <div class="hunter-shell">
+    <div class="hunter-heading">
+      <div>
+        <div class="dashboard-kicker">City Park Waves</div>
+        <h2>Hunter Stats</h2>
+        <p>See who is working City Park Waves activators and explore hunter activity by callsign.</p>
+      </div>
+      <button id="refreshHunterStatsButton" type="button">Refresh</button>
+    </div>
+
+    <div class="hunter-summary-grid">
+      <div class="hunter-summary-card"><span>🎯</span><strong id="hunterSummaryHunters">0</strong><small>Hunters</small></div>
+      <div class="hunter-summary-card"><span>💬</span><strong id="hunterSummaryQsos">0</strong><small>Hunter QSOs</small></div>
+      <div class="hunter-summary-card"><span>🌳</span><strong id="hunterSummaryParks">0</strong><small>Parks Hunted</small></div>
+      <div class="hunter-summary-card"><span>📡</span><strong id="hunterSummaryActivators">0</strong><small>Activators Worked</small></div>
+    </div>
+
+    <div class="hunter-layout">
+      <div class="hunter-panel">
+        <h3>🔎 Look Up a Hunter</h3>
+        <div class="hunter-search-row">
+          <input id="hunterCallsignInput" type="text" placeholder="Enter callsign, e.g. W8ABC" autocapitalize="characters">
+          <button id="hunterCallsignButton" type="button">View Stats</button>
+        </div>
+        <div id="hunterProfileStatus" class="hunter-status"></div>
+        <div id="hunterProfileResults"></div>
+      </div>
+
+      <div class="hunter-panel">
+        <h3>🏆 Hunter Leaderboard</h3>
+        <div class="hunter-leaderboard-row hunter-leaderboard-header">
+          <div>#</div>
+          <div>Call</div>
+          <div class="hunter-num">Parks</div>
+          <div class="hunter-num">QSOs</div>
+        </div>
+        <div id="hunterLeaderboardStatus" class="hunter-status">Loading hunter leaderboard...</div>
+        <div id="hunterLeaderboardResults"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section app-panel" id="operator-profile">
   <div class="park-detail-wrap">
     <button id="operatorProfileBackButton" class="park-detail-button">← Back to Activity</button>
@@ -1141,7 +1188,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260913-1650"></script>
+  <script src="/js/app.js?v=20260913-1705"></script>
 
 
 </body>
