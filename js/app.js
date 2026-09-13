@@ -170,7 +170,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let currentUserIsAdmin = false;
 
   function showPanel(panelId, updateHash = true) {
-    const adminPanel = panelId === "admin-review" || panelId === "admin-import";
+    const adminPanel =
+      panelId === "admin-users" ||
+      panelId === "admin-review" ||
+      panelId === "admin-import";
 
     if (adminPanel && !currentUserIsAdmin) {
       panelId = "account";
@@ -331,6 +334,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const submitParkDescription = document.getElementById("submitParkDescription");
   const submitParkButton = document.getElementById("submitParkButton");
   const submitParkStatus = document.getElementById("submitParkStatus");
+  const adminUsersSection = document.getElementById("admin-users");
+  const refreshAdminUsersButton = document.getElementById("refreshAdminUsersButton");
+  const adminUsersStatus = document.getElementById("adminUsersStatus");
+  const adminUsersResults = document.getElementById("adminUsersResults");
+  const adminUserCount = document.getElementById("adminUserCount");
+  const adminVerifiedCount = document.getElementById("adminVerifiedCount");
+  const adminAdminCount = document.getElementById("adminAdminCount");
   const adminImportSection = document.getElementById("admin-import");
   const startNationwideImportButton = document.getElementById("startNationwideImportButton");
   const nationwideImportStatus = document.getElementById("nationwideImportStatus");
@@ -3220,6 +3230,169 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   }
 
+  function formatAdminUserDate(value) {
+    if (!value) return "Never";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Unknown";
+    return date.toLocaleString();
+  }
+
+  async function loadAdminUsers() {
+    if (!adminUsersResults || !currentUserIsAdmin) return;
+
+    adminUsersStatus.textContent = "Loading user accounts...";
+    adminUsersResults.innerHTML = "";
+
+    const { data, error } = await supabaseClient.rpc("admin_list_users");
+
+    if (error) {
+      console.error(error);
+      adminUsersStatus.textContent = "Unable to load user accounts.";
+      return;
+    }
+
+    const users = Array.isArray(data) ? data : [];
+
+    adminUserCount.textContent = users.length.toLocaleString();
+    adminVerifiedCount.textContent =
+      users.filter((user) => user.callsign_verified).length.toLocaleString();
+    adminAdminCount.textContent =
+      users.filter((user) => user.is_admin).length.toLocaleString();
+
+    if (!users.length) {
+      adminUsersStatus.textContent = "No user accounts found.";
+      return;
+    }
+
+    adminUsersStatus.textContent =
+      `${users.length} user account${users.length === 1 ? "" : "s"}.`;
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const currentUserId = sessionData?.session?.user?.id || "";
+
+    users.forEach((user) => {
+      const card = document.createElement("article");
+      card.className = "admin-user-card";
+
+      const isSelf = user.id === currentUserId;
+      const verifiedText = user.callsign_verified
+        ? "Verified"
+        : (user.callsign ? "Unverified" : "No callsign");
+      const location = [user.city, user.state].filter(Boolean).join(", ");
+
+      card.innerHTML = `
+        <div class="admin-user-card-head">
+          <div>
+            <div class="admin-user-title">
+              ${escapeHTML(user.username || user.callsign || user.email || "User")}
+              ${isSelf ? '<span class="admin-user-chip self">You</span>' : ""}
+              ${user.is_admin ? '<span class="admin-user-chip admin">Admin</span>' : ""}
+            </div>
+            <div class="admin-user-email">${escapeHTML(user.email || "No email")}</div>
+          </div>
+          <div class="admin-user-verification ${user.callsign_verified ? "verified" : ""}">
+            ${escapeHTML(verifiedText)}
+          </div>
+        </div>
+
+        <div class="admin-user-details">
+          <div><span>Callsign</span><strong>${escapeHTML(user.callsign || "—")}</strong></div>
+          <div><span>Username</span><strong>${escapeHTML(user.username || "—")}</strong></div>
+          <div><span>Location</span><strong>${escapeHTML(location || "—")}</strong></div>
+          <div><span>Grid</span><strong>${escapeHTML(user.grid_square || "—")}</strong></div>
+          <div><span>Created</span><strong>${escapeHTML(formatAdminUserDate(user.created_at))}</strong></div>
+          <div><span>Last sign-in</span><strong>${escapeHTML(formatAdminUserDate(user.last_sign_in_at))}</strong></div>
+        </div>
+
+        <div class="admin-user-actions">
+          <button
+            type="button"
+            class="admin-user-admin-toggle"
+            data-user-id="${escapeHTML(user.id)}"
+            data-next-admin="${user.is_admin ? "false" : "true"}"
+            ${isSelf || !user.callsign ? "disabled" : ""}
+          >
+            ${user.is_admin ? "Remove Admin" : "Make Admin"}
+          </button>
+
+          <button
+            type="button"
+            class="admin-user-delete danger"
+            data-user-id="${escapeHTML(user.id)}"
+            data-user-label="${escapeHTML(user.username || user.callsign || user.email || "this user")}"
+            ${isSelf ? "disabled" : ""}
+          >
+            Delete Account
+          </button>
+        </div>
+
+        ${!user.callsign && !isSelf
+          ? '<div class="admin-user-note">Admin access can be granted after this user has a verified operator callsign.</div>'
+          : ""}
+      `;
+
+      adminUsersResults.appendChild(card);
+    });
+
+    adminUsersResults.querySelectorAll(".admin-user-admin-toggle").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const userId = button.dataset.userId;
+        const makeAdmin = button.dataset.nextAdmin === "true";
+        const action = makeAdmin ? "grant admin access to" : "remove admin access from";
+
+        if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
+
+        button.disabled = true;
+        adminUsersStatus.textContent = makeAdmin
+          ? "Granting admin access..."
+          : "Removing admin access...";
+
+        const { error } = await supabaseClient.rpc("admin_set_user_admin", {
+          p_user_id: userId,
+          p_is_admin: makeAdmin
+        });
+
+        if (error) {
+          console.error(error);
+          adminUsersStatus.textContent = error.message || "Unable to change admin access.";
+          button.disabled = false;
+          return;
+        }
+
+        await loadAdminUsers();
+      });
+    });
+
+    adminUsersResults.querySelectorAll(".admin-user-delete").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const userId = button.dataset.userId;
+        const label = button.dataset.userLabel || "this user";
+
+        if (!window.confirm(
+          `Delete ${label}? This permanently removes the account and account-linked data. This cannot be undone.`
+        )) return;
+
+        button.disabled = true;
+        adminUsersStatus.textContent = "Deleting user account...";
+
+        const { error } = await supabaseClient.rpc("admin_delete_user", {
+          p_user_id: userId
+        });
+
+        if (error) {
+          console.error(error);
+          adminUsersStatus.textContent = error.message || "Unable to delete this account.";
+          button.disabled = false;
+          return;
+        }
+
+        await loadAdminUsers();
+      });
+    });
+  }
+
+  refreshAdminUsersButton?.addEventListener("click", loadAdminUsers);
+
   async function saveBasicInfo() {
     const { data: sessionData } = await supabaseClient.auth.getSession();
     const session = sessionData?.session;
@@ -3315,7 +3488,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       document.body.classList.remove("admin-user");
       await loadDashboard();
 
-      if (window.location.hash === "#admin-import" || window.location.hash === "#admin-review") {
+      if (
+        window.location.hash === "#admin-users" ||
+        window.location.hash === "#admin-import" ||
+        window.location.hash === "#admin-review"
+      ) {
         showPanel("account");
       }
       return;
@@ -3348,6 +3525,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     await loadDashboard();
 
     if (operator?.is_admin) {
+      loadAdminUsers();
       loadPendingParkSubmissions();
       loadAdminFeedback();
       if (parkDetailSuggestionsStatus && parkDetailSuggestionsResults) {
