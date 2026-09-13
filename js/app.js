@@ -247,6 +247,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const refreshFeedbackButton = document.getElementById("refreshFeedbackButton");
   const adminFeedbackStatus = document.getElementById("adminFeedbackStatus");
   const adminFeedbackResults = document.getElementById("adminFeedbackResults");
+  const dashboardSignedOut = document.getElementById("dashboardSignedOut");
+  const dashboardSignedIn = document.getElementById("dashboardSignedIn");
+  const dashboardWelcome = document.getElementById("dashboardWelcome");
+  const dashboardCallsignBadge = document.getElementById("dashboardCallsignBadge");
+  const dashboardStatActivations = document.getElementById("dashboardStatActivations");
+  const dashboardStatParks = document.getElementById("dashboardStatParks");
+  const dashboardStatQsos = document.getElementById("dashboardStatQsos");
+  const dashboardStatus = document.getElementById("dashboardStatus");
   const operatorProfileStatus = document.getElementById("operatorProfileStatus");
   const operatorProfileContent = document.getElementById("operatorProfileContent");
   const operatorProfileBackButton = document.getElementById("operatorProfileBackButton");
@@ -2985,6 +2993,68 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   leaderboardMonthButton.addEventListener("click", () => loadLeaderboard("month"));
   leaderboardAllButton.addEventListener("click", () => loadLeaderboard("all"));
 
+  async function loadDashboard() {
+    if (!dashboardSignedOut || !dashboardSignedIn) return;
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      dashboardSignedOut.style.display = "flex";
+      dashboardSignedIn.style.display = "none";
+      dashboardCallsignBadge.textContent = "Not signed in";
+      dashboardStatus.textContent = "";
+      return;
+    }
+
+    dashboardSignedOut.style.display = "none";
+    dashboardSignedIn.style.display = "block";
+    dashboardStatus.textContent = "Loading your operator dashboard...";
+
+    const { data: operator, error: operatorError } = await supabaseClient
+      .from("operators")
+      .select("callsign,callsign_verified,callsign_status,license_class,profile_state")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    const { data: activations, error: activationError } = await supabaseClient
+      .from("activations")
+      .select("park_id,qso_count")
+      .eq("auth_user_id", session.user.id);
+
+    if (operatorError || activationError) {
+      console.error(operatorError || activationError);
+      dashboardStatus.textContent = "Some dashboard information could not be loaded.";
+      return;
+    }
+
+    const rows = Array.isArray(activations) ? activations : [];
+    const uniqueParks = new Set(rows.map((item) => item.park_id).filter(Boolean)).size;
+    const qsoTotal = rows.reduce((sum, item) => sum + Number(item.qso_count || 0), 0);
+    const callsign = operator?.callsign || "Callsign pending";
+    const verified = Boolean(operator?.callsign_verified) &&
+      String(operator?.callsign_status || "").toLowerCase() === "active";
+
+    dashboardCallsignBadge.textContent =
+      verified ? `${callsign} • Verified` : callsign;
+
+    dashboardWelcome.innerHTML =
+      '<div class="dashboard-welcome-icon">📻</div>' +
+      '<div><h3>' + (operator?.callsign ? 'Welcome, ' + escapeHTML(operator.callsign) : 'Welcome to your dashboard') + '</h3>' +
+      '<p>' +
+      (verified
+        ? 'Your operator account is ready. Submit an ADIF log or open the Quick Logger when you head to a park.'
+        : 'Your account is signed in. Uploading an ADIF log can verify and attach the activator callsign automatically.') +
+      '</p>' +
+      (operator?.license_class ? '<div class="dashboard-license-chip">' + escapeHTML(operator.license_class) + ' class</div>' : '') +
+      '</div>';
+
+    dashboardStatActivations.textContent = rows.length.toLocaleString();
+    dashboardStatParks.textContent = uniqueParks.toLocaleString();
+    dashboardStatQsos.textContent = qsoTotal.toLocaleString();
+    dashboardStatus.textContent = "";
+  }
+
   async function loadMyActivations() {
     myActivationsResults.innerHTML = "";
 
@@ -3065,6 +3135,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       profileEditor.style.display = "none";
       currentUserIsAdmin = false;
       document.body.classList.remove("admin-user");
+      await loadDashboard();
 
       if (window.location.hash === "#admin-import" || window.location.hash === "#admin-review") {
         showPanel("account");
@@ -3085,6 +3156,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     updateActivationRequirementDisplay(operator);
     currentUserIsAdmin = Boolean(operator?.is_admin);
     document.body.classList.toggle("admin-user", currentUserIsAdmin);
+    await loadDashboard();
 
     if (operator?.is_admin) {
       loadPendingParkSubmissions();
@@ -3218,6 +3290,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     refreshAccountStatus();
     loadMyActivations();
     quickLoggerRefreshOperator();
+    loadDashboard();
   });
 
   const initialParams = new URLSearchParams(window.location.search);
@@ -3237,5 +3310,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   loadLeaderboard("all");
   refreshAccountStatus();
   loadMyActivations();
+  loadDashboard();
   quickLoggerLoadDraft();
   quickLoggerRefreshOperator();
