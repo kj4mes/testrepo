@@ -2023,6 +2023,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       const bands = Array.isArray(data.top_bands) ? data.top_bands : [];
       const modes = Array.isArray(data.top_modes) ? data.top_modes : [];
       const recent = Array.isArray(data.recent_activations) ? data.recent_activations : [];
+      const achievements = Array.isArray(data.achievements) ? data.achievements : [];
 
       operatorProfileStatus.textContent = "";
       const avatarHtml = op.avatar_url
@@ -2035,14 +2036,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
       const bandsHtml = bands.length ? bands.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.band) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No band data yet.</p>";
       const modesHtml = modes.length ? modes.map((item) => '<div class="operator-stat-row"><span>' + escapeHTML(item.mode) + '</span><strong>' + Number(item.qsos || 0).toLocaleString() + '</strong></div>').join("") : "<p>No mode data yet.</p>";
+      const achievementsHtml = achievements.length ? achievements.map((badge) => '<div class="operator-badge" title="' + escapeHTML(badge.description || "") + '"><span class="operator-badge-icon">' + escapeHTML(badge.icon || "🏅") + '</span><span><strong>' + escapeHTML(badge.name || "Achievement") + '</strong><small>' + escapeHTML(badge.description || "") + '</small></span></div>').join("") : "<p>No achievements yet — time to put a park on the air.</p>";
       const recentHtml = recent.length ? recent.map((item) => {
         const ref = item.reference_code ? " • " + escapeHTML(item.reference_code) : "";
-        return '<div class="recent-activation-row"><div><strong>' + escapeHTML(item.park_name) + '</strong>' + ref + '</div><div>' + escapeHTML([item.city, item.state].filter(Boolean).join(", ")) + " • " + Number(item.qso_count || 0).toLocaleString() + " QSOs • " + escapeHTML(activityDate(item.activation_at)) + '</div></div>';
+        const pioneer = item.was_first_activation ? ' <span class="first-activation-badge" title="First recorded activation at this park">🚩 First</span>' : "";
+        return '<div class="recent-activation-row"><div><strong>' + escapeHTML(item.park_name) + '</strong>' + ref + pioneer + '</div><div>' + escapeHTML([item.city, item.state].filter(Boolean).join(", ")) + " • " + Number(item.qso_count || 0).toLocaleString() + " QSOs • " + escapeHTML(activityDate(item.activation_at)) + '</div></div>';
       }).join("") : "<p>No activations yet.</p>";
 
       operatorProfileContent.innerHTML =
         '<div class="operator-profile-card"><div class="operator-profile-head">' + avatarHtml + '<div><h2>' + escapeHTML(op.callsign) + '</h2><div>' + locationHtml + '</div>' + licenseHtml + '</div></div>' + bioHtml + linkHtml + '</div>' +
-        '<div class="park-detail-stats"><div class="park-detail-stat"><strong>' + Number(stats.unique_parks || 0).toLocaleString() + '</strong>Unique Parks</div><div class="park-detail-stat"><strong>' + Number(stats.activations || 0).toLocaleString() + '</strong>Activations</div><div class="park-detail-stat"><strong>' + Number(stats.qsos || 0).toLocaleString() + '</strong>QSOs</div></div>' +
+        '<div class="park-detail-stats"><div class="park-detail-stat"><strong>' + Number(stats.unique_parks || 0).toLocaleString() + '</strong>Unique Parks</div><div class="park-detail-stat"><strong>' + Number(stats.activations || 0).toLocaleString() + '</strong>Activations</div><div class="park-detail-stat"><strong>' + Number(stats.qsos || 0).toLocaleString() + '</strong>QSOs</div><div class="park-detail-stat"><strong>' + Number(stats.first_activations || 0).toLocaleString() + '</strong>First Activations</div></div>' +
+        '<div class="park-detail-card"><h3>Achievements</h3><div class="operator-badges">' + achievementsHtml + '</div></div>' +
         '<div class="operator-profile-grid"><div class="park-detail-card"><h3>Top Bands</h3>' + bandsHtml + '</div><div class="park-detail-card"><h3>Top Modes</h3>' + modesHtml + '</div></div>' +
         '<div class="park-detail-card"><h3>Recent Activations</h3>' + recentHtml + '</div>';
     } catch (error) {
