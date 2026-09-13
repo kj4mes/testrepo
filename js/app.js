@@ -365,7 +365,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     nearbyLayer = L.layerGroup().addTo(nearbyMap);
 
-    L.marker([lat, lon])
+    const userLocationIcon = L.divIcon({
+      className: "user-location-star-icon",
+      html: '<div class="user-location-star" aria-hidden="true">★</div>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -18]
+    });
+
+    L.marker([lat, lon], { icon: userLocationIcon, zIndexOffset: 1000 })
       .bindPopup("<strong>Your location</strong>")
       .addTo(nearbyLayer);
 
