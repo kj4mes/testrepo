@@ -162,6 +162,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   });
 
   const headerAuthButton = document.getElementById("headerAuthButton");
+  const headerCreateAccountButton = document.getElementById("headerCreateAccountButton");
   const menuButton = document.getElementById("menuButton");
   const menuPanel = document.getElementById("menuPanel");
   const panelLinks = Array.from(document.querySelectorAll("[data-panel-link]"));
@@ -215,6 +216,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   });
 
+  headerCreateAccountButton?.addEventListener("click", () => {
+    showPanel("account");
+    setTimeout(() => accountUsername?.focus(), 50);
+  });
+
   menuButton.addEventListener("click", (event) => {
     event.stopPropagation();
     const isOpen = menuPanel.classList.toggle("open");
@@ -244,10 +250,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const callsignButton = document.getElementById("callsignButton");
   const callsignStatus = document.getElementById("callsignStatus");
   const callsignResult = document.getElementById("callsignResult");
+  const accountUsername = document.getElementById("accountUsername");
   const accountEmail = document.getElementById("accountEmail");
+  const accountCity = document.getElementById("accountCity");
+  const accountState = document.getElementById("accountState");
+  const accountGrid = document.getElementById("accountGrid");
+  const accountAddress = document.getElementById("accountAddress");
   const accountPassword = document.getElementById("accountPassword");
   const signUpButton = document.getElementById("signUpButton");
   const signInButton = document.getElementById("signInButton");
+  const saveBasicInfoButton = document.getElementById("saveBasicInfoButton");
   const signOutButton = document.getElementById("signOutButton");
   const accountStatus = document.getElementById("accountStatus");
   const feedbackCategory = document.getElementById("feedbackCategory");
@@ -3132,6 +3144,126 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   refreshActivationsButton.addEventListener("click", loadMyActivations);
 
+  function basicAccountValues() {
+    return {
+      username: accountUsername.value.trim(),
+      city: accountCity.value.trim(),
+      state: accountState.value.trim().toUpperCase(),
+      grid_square: accountGrid.value.trim(),
+      street_address: accountAddress.value.trim()
+    };
+  }
+
+  function validateBasicAccount(values) {
+    if (!/^[A-Za-z0-9_.-]{3,30}$/.test(values.username)) {
+      return "Username must be 3–30 characters using letters, numbers, dot, dash, or underscore.";
+    }
+    if (!values.city) return "Enter your city.";
+    if (!/^[A-Z]{2}$/.test(values.state)) return "Enter a two-letter state abbreviation.";
+    if (!values.grid_square) return "Enter your grid square.";
+    if (!values.street_address) return "Enter your street address.";
+    return null;
+  }
+
+  async function saveBasicAccountProfile(userId, values) {
+    const payload = {
+      auth_user_id: userId,
+      username: values.username,
+      city: values.city || null,
+      state: values.state || null,
+      grid_square: values.grid_square || null,
+      street_address: values.street_address || null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabaseClient
+      .from("user_profiles")
+      .upsert(payload, { onConflict: "auth_user_id" });
+
+    if (error) throw error;
+  }
+
+  async function loadBasicAccountProfile(session) {
+    if (!session?.user) return;
+
+    const { data: profile, error } = await supabaseClient
+      .from("user_profiles")
+      .select("username,city,state,grid_square,street_address")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Unable to load basic account profile:", error);
+      return;
+    }
+
+    const meta = session.user.user_metadata || {};
+    accountEmail.value = session.user.email || "";
+    accountUsername.value = profile?.username || meta.username || "";
+    accountCity.value = profile?.city || meta.city || "";
+    accountState.value = profile?.state || meta.state || "";
+    accountGrid.value = profile?.grid_square || meta.grid_square || "";
+    accountAddress.value = profile?.street_address || meta.street_address || "";
+
+    if (!profile?.username && meta.username) {
+      try {
+        await saveBasicAccountProfile(session.user.id, {
+          username: meta.username,
+          city: meta.city || "",
+          state: String(meta.state || "").toUpperCase(),
+          grid_square: meta.grid_square || "",
+          street_address: meta.street_address || ""
+        });
+      } catch (syncError) {
+        console.warn("Could not sync signup profile metadata:", syncError);
+      }
+    }
+  }
+
+  async function saveBasicInfo() {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user) {
+      accountStatus.textContent = "Sign in before saving account information.";
+      return;
+    }
+
+    const values = basicAccountValues();
+    const validationError = validateBasicAccount(values);
+
+    if (validationError) {
+      accountStatus.textContent = validationError;
+      return;
+    }
+
+    accountStatus.textContent = "Saving account information...";
+
+    try {
+      await saveBasicAccountProfile(session.user.id, values);
+
+      // Keep non-sensitive convenience fields mirrored in auth metadata for
+      // account setup recovery. These are never used for authorization.
+      await supabaseClient.auth.updateUser({
+        data: {
+          username: values.username,
+          city: values.city,
+          state: values.state,
+          grid_square: values.grid_square,
+          street_address: values.street_address
+        }
+      });
+
+      accountStatus.textContent = "✓ Basic account information saved.";
+    } catch (error) {
+      console.error(error);
+      const message = String(error?.message || "");
+      accountStatus.textContent = message.toLowerCase().includes("username")
+        ? "That username is already in use. Choose another username."
+        : "Unable to save account information: " + message;
+    }
+  }
+
   async function refreshAccountStatus() {
     const { data } = await supabaseClient.auth.getSession();
     const session = data?.session;
@@ -3141,11 +3273,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       accountStatus.textContent = "Not signed in.";
       signUpButton.style.display = "inline-block";
       signInButton.style.display = "inline-block";
+      saveBasicInfoButton.style.display = "none";
       signOutButton.style.display = "none";
+      accountEmail.readOnly = false;
       if (headerAuthButton) {
         headerAuthButton.textContent = "Log In";
         headerAuthButton.dataset.panelLink = "account";
         headerAuthButton.classList.remove("signed-in");
+      }
+      if (headerCreateAccountButton) {
+        headerCreateAccountButton.style.display = "inline-block";
       }
       profileEditor.style.display = "none";
       currentUserIsAdmin = false;
@@ -3160,11 +3297,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     signUpButton.style.display = "none";
     signInButton.style.display = "none";
+    saveBasicInfoButton.style.display = "inline-block";
     signOutButton.style.display = "inline-block";
+    accountEmail.readOnly = true;
+    await loadBasicAccountProfile(session);
     if (headerAuthButton) {
       headerAuthButton.textContent = "Dashboard";
       headerAuthButton.dataset.panelLink = "dashboard";
       headerAuthButton.classList.add("signed-in");
+    }
+    if (headerCreateAccountButton) {
+      headerCreateAccountButton.style.display = "none";
     }
 
     const { data: operator } = await supabaseClient
@@ -3244,6 +3387,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   async function createAccount() {
     const email = accountEmail.value.trim();
     const password = accountPassword.value;
+    const values = basicAccountValues();
+    const validationError = validateBasicAccount(values);
+
+    if (validationError) {
+      accountStatus.textContent = validationError;
+      return;
+    }
 
     if (!email || password.length < 6) {
       accountStatus.textContent =
@@ -3257,7 +3407,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin
+        emailRedirectTo: window.location.origin,
+        data: {
+          username: values.username,
+          city: values.city,
+          state: values.state,
+          grid_square: values.grid_square,
+          street_address: values.street_address
+        }
       }
     });
 
@@ -3266,7 +3423,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       return;
     }
 
-    if (data.session) {
+    if (data.session?.user) {
+      try {
+        await saveBasicAccountProfile(data.session.user.id, values);
+      } catch (profileError) {
+        console.error(profileError);
+        accountStatus.textContent =
+          "Account created, but the basic profile could not be saved: " + profileError.message;
+        return;
+      }
       accountStatus.textContent = "Account created and signed in.";
     } else {
       accountStatus.textContent =
@@ -3304,6 +3469,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   signUpButton.addEventListener("click", createAccount);
   signInButton.addEventListener("click", signIn);
+  saveBasicInfoButton.addEventListener("click", saveBasicInfo);
   signOutButton.addEventListener("click", signOut);
 
   supabaseClient.auth.onAuthStateChange(() => {
