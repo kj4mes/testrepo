@@ -2021,6 +2021,22 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
       if (saveResult.error) {
         console.error(saveResult.error);
+
+        const saveMessage = String(saveResult.error.message || "").toLowerCase();
+
+        if (
+          saveMessage.includes("duplicate key") ||
+          saveMessage.includes("operators_callsign_key") ||
+          saveMessage.includes("unique constraint")
+        ) {
+          return {
+            ok: false,
+            error:
+              "This callsign is already linked to another City Park Waves account. " +
+              "Use the account that originally claimed the callsign or contact the site administrator to transfer it."
+          };
+        }
+
         return {
           ok: false,
           error: "The callsign was verified, but it could not be attached to your operator account."
