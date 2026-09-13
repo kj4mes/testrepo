@@ -2955,3 +2955,42 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.account-login-card {
+  max-width: 700px;
+}
+
+.account-login-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.account-form-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-form-heading h3 {
+  margin-top: 0;
+}
+
+.account-secondary-button {
+  background: #eef3f4;
+  color: #17324d;
+}
+
+@media (max-width: 700px) {
+  .account-login-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-form-heading {
+    flex-direction: column;
+  }
+}
