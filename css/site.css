@@ -1463,3 +1463,30 @@
   box-shadow: 0 0 0 1px rgba(23, 50, 77, 0.22);
   flex: 0 0 13px;
 }
+
+
+.park-identity-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transform: translateY(-1px);
+}
+
+.park-identity-marker .park-activation-marker {
+  flex: 0 0 22px;
+}
+
+.park-identity-label {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(23, 50, 77, 0.28);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  color: #17324d;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
