@@ -319,6 +319,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const dashboardStatParks = document.getElementById("dashboardStatParks");
   const dashboardStatQsos = document.getElementById("dashboardStatQsos");
   const dashboardStatus = document.getElementById("dashboardStatus");
+  const dashboardSignOutButton = document.getElementById("dashboardSignOutButton");
   const operatorProfileStatus = document.getElementById("operatorProfileStatus");
   const operatorProfileContent = document.getElementById("operatorProfileContent");
   const operatorProfileBackButton = document.getElementById("operatorProfileBackButton");
@@ -3773,6 +3774,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   signInButton.addEventListener("click", signIn);
   saveBasicInfoButton.addEventListener("click", saveBasicInfo);
   signOutButton.addEventListener("click", signOut);
+  dashboardSignOutButton?.addEventListener("click", signOut);
 
   supabaseClient.auth.onAuthStateChange(() => {
     // Defer Supabase/database work until the auth callback has returned.
