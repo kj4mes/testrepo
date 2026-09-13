@@ -370,7 +370,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       currentActivationRequirement = 10;
       currentActivationLicenseClass = null;
       activationRequirement.textContent =
-        "Sign in with a verified callsign to see your QSO requirement.";
+        "Sign in, then upload an ADIF log. The activator callsign will be verified automatically.";
       return;
     }
 
@@ -1903,6 +1903,150 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     return { valid, invalid, duplicates };
   }
 
+  function adifActivatorCallsign(records) {
+    const calls = records
+      .map((record) =>
+        String(record.STATION_CALLSIGN || record.OPERATOR || "")
+          .trim()
+          .toUpperCase()
+      )
+      .filter(Boolean);
+
+    if (!calls.length) {
+      return {
+        ok: false,
+        error: "The ADIF log does not include STATION_CALLSIGN or OPERATOR, so the activator callsign cannot be verified."
+      };
+    }
+
+    const normalized = new Set(calls.map(normalizeOperatorCallsign));
+
+    if (normalized.size > 1) {
+      return {
+        ok: false,
+        error: "This ADIF log contains more than one activator/station callsign."
+      };
+    }
+
+    return {
+      ok: true,
+      logCallsign: calls[0],
+      lookupCallsign: [...normalized][0]
+    };
+  }
+
+  function hamdbExpirationToIso(value) {
+    if (!value) return null;
+
+    const text = String(value).trim();
+    const mmddyyyy = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+    if (mmddyyyy) {
+      const [, month, day, year] = mmddyyyy;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+    return null;
+  }
+
+  async function verifyAndAttachAdifActivator(records) {
+    const activator = adifActivatorCallsign(records);
+
+    if (!activator.ok) return activator;
+
+    let response;
+    let verification;
+
+    try {
+      response = await fetch(
+        `/api/verify-callsign?callsign=${encodeURIComponent(activator.lookupCallsign)}`
+      );
+      verification = await response.json();
+    } catch (error) {
+      console.error("Unable to verify ADIF activator:", error);
+      return {
+        ok: false,
+        error: "The activator callsign could not be checked right now. Please try the upload again."
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: verification?.error || "The activator callsign lookup failed."
+      };
+    }
+
+    if (!verification?.found || !verification?.amateur || !verification?.active || !verification?.verified) {
+      return {
+        ok: false,
+        error: `${activator.lookupCallsign} could not be verified as an active amateur radio callsign.`
+      };
+    }
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData?.session;
+
+    if (session?.user) {
+      const profileValues = {
+        auth_user_id: session.user.id,
+        callsign: verification.callsign,
+        callsign_status: "active",
+        license_class: verification.service || null,
+        license_expiration: hamdbExpirationToIso(verification.expiration),
+        callsign_verified: true,
+        callsign_verified_at: new Date().toISOString(),
+        verification_source: verification.source || "HamDB / FCC ULS",
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: existingProfile, error: lookupError } = await supabaseClient
+        .from("operators")
+        .select("id")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      if (lookupError) {
+        console.error(lookupError);
+        return {
+          ok: false,
+          error: "The callsign was verified, but the operator account could not be updated."
+        };
+      }
+
+      const saveResult = existingProfile?.id
+        ? await supabaseClient.from("operators").update(profileValues).eq("id", existingProfile.id)
+        : await supabaseClient.from("operators").insert(profileValues);
+
+      if (saveResult.error) {
+        console.error(saveResult.error);
+        return {
+          ok: false,
+          error: "The callsign was verified, but it could not be attached to your operator account."
+        };
+      }
+    }
+
+    const operator = {
+      callsign: verification.callsign,
+      callsign_verified: true,
+      callsign_status: "active",
+      license_class: verification.service || null,
+      license_expiration: hamdbExpirationToIso(verification.expiration)
+    };
+
+    updateActivationRequirementDisplay(operator);
+
+    return {
+      ok: true,
+      logCallsign: activator.logCallsign,
+      callsign: verification.callsign,
+      licenseClass: verification.service || null,
+      operator
+    };
+  }
+
   adifFile.addEventListener("change", async () => {
     parsedAdifRecords = [];
     adifPreview.textContent = "";
@@ -1950,17 +2094,24 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     const rawRecords = parseAdif(text);
     const validation = validateAndDedupeAdif(rawRecords);
 
-    parsedAdifRecords = validation.valid;
-
     if (!rawRecords.length) {
       adifPreview.textContent = "No QSO records were found in that ADIF file.";
       return;
     }
 
-    const first = rawRecords[0];
-    const stationCall =
-      (first.STATION_CALLSIGN || first.OPERATOR || "").toUpperCase();
+    adifPreview.textContent = "Checking the activator callsign from the ADIF log...";
 
+    const activatorVerification = await verifyAndAttachAdifActivator(rawRecords);
+
+    if (!activatorVerification.ok) {
+      parsedAdifRecords = [];
+      adifPreview.textContent = activatorVerification.error;
+      return;
+    }
+
+    parsedAdifRecords = validation.valid;
+
+    const stationCall = activatorVerification.logCallsign;
     const validCount = validation.valid.length;
     const enoughQsos = validCount >= currentActivationRequirement;
 
@@ -1970,7 +2121,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     ];
 
     if (stationCall) {
-      parts.push(`Station: ${stationCall}.`);
+      parts.push(
+        `Activator: ${stationCall} — verified active` +
+        (activatorVerification.licenseClass ? ` (${activatorVerification.licenseClass} class).` : ".")
+      );
     }
 
     if (validation.duplicates) {
@@ -2045,7 +2199,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       return;
     }
 
-    const { data: operator, error: operatorError } = await supabaseClient
+    let { data: operator, error: operatorError } = await supabaseClient
       .from("operators")
       .select("id,callsign,callsign_verified,callsign_status,license_class,license_expiration")
       .eq("auth_user_id", session.user.id)
@@ -2056,8 +2210,39 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       !operator?.callsign_verified ||
       String(operator?.callsign_status || "").toLowerCase() !== "active"
     ) {
+      if (!parsedAdifRecords.length) {
+        activationSubmitStatus.textContent =
+          "Choose an ADIF file so City Park Waves can verify the activator callsign.";
+        return;
+      }
+
       activationSubmitStatus.textContent =
-        "A verified, active amateur radio callsign is required before submitting an activation.";
+        "Verifying the activator callsign from the ADIF log...";
+
+      const verification = await verifyAndAttachAdifActivator(parsedAdifRecords);
+
+      if (!verification.ok) {
+        activationSubmitStatus.textContent = verification.error;
+        return;
+      }
+
+      const refreshed = await supabaseClient
+        .from("operators")
+        .select("id,callsign,callsign_verified,callsign_status,license_class,license_expiration")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      operator = refreshed.data;
+      operatorError = refreshed.error;
+    }
+
+    if (
+      operatorError ||
+      !operator?.callsign_verified ||
+      String(operator?.callsign_status || "").toLowerCase() !== "active"
+    ) {
+      activationSubmitStatus.textContent =
+        "The activator callsign could not be verified and attached to your account.";
       return;
     }
 
