@@ -534,15 +534,24 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
           const activationCount = Math.max(0, Number(park.activation_count || 0));
 
-          L.marker([plat, plon], {
+          const parkMarker = L.marker([plat, plon], {
             icon: parkActivationIcon(park)
           })
             .bindPopup(
               `<strong>${escapeHTML(park.name)}</strong><br>` +
+              (park.reference_code ? `${escapeHTML(park.reference_code)}<br>` : "") +
               `${Number(park.distance_miles).toFixed(1)} mi away<br>` +
               `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}`
             )
             .addTo(nearbyLayer);
+
+          parkMarker.on("click", () => {
+            const element = parkMarker.getElement();
+            const identity = element?.querySelector(".park-identity-marker");
+            if (identity) {
+              identity.classList.toggle("show-identity");
+            }
+          });
         }
 
         const card = document.createElement("div");
