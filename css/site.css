@@ -1366,3 +1366,25 @@
     .rule-table th {
       color: #12344a;
     }
+
+
+.user-location-star-icon {
+  background: transparent;
+  border: 0;
+}
+
+.user-location-star {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f4b400;
+  font-size: 31px;
+  line-height: 1;
+  text-shadow:
+    0 1px 0 #8a5a00,
+    0 0 2px #8a5a00,
+    0 2px 5px rgba(0, 0, 0, 0.35);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+}
