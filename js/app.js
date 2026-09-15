@@ -786,13 +786,46 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     setTimeout(() => nearbyMap.invalidateSize(), 100);
   }
 
+  async function getGeolocationPermissionState() {
+    try {
+      if (!navigator.permissions?.query) return "unavailable";
+      const result = await navigator.permissions.query({ name: "geolocation" });
+      return result?.state || "unknown";
+    } catch {
+      return "unavailable";
+    }
+  }
+
+  function formatLocationDiagnostics(diag) {
+    return [
+      `Secure context: ${diag.secureContext ? "yes" : "no"}`,
+      `Geolocation API: ${diag.geolocationAvailable ? "yes" : "no"}`,
+      `Permission state: ${diag.permissionState}`,
+      `High-accuracy result: ${diag.highAccuracyResult}`,
+      `Fallback result: ${diag.fallbackResult}`,
+      `Error code: ${diag.errorCode ?? "none"}`
+    ].join(" • ");
+  }
+
   async function findNearbyParks() {
     statusBox.textContent = "";
     resultsBox.innerHTML = "";
 
+    const diagnostics = {
+      secureContext: window.isSecureContext,
+      geolocationAvailable: Boolean(navigator.geolocation),
+      permissionState: await getGeolocationPermissionState(),
+      highAccuracyResult: "not attempted",
+      fallbackResult: "not attempted",
+      errorCode: null
+    };
+
     if (!navigator.geolocation) {
-      statusBox.textContent =
-        "Location services are not supported by this browser.";
+      const message =
+        "Location services are not supported by this browser. " +
+        formatLocationDiagnostics(diagnostics);
+      statusBox.textContent = message;
+      if (mapStatus) mapStatus.textContent = message;
       return;
     }
 
@@ -806,7 +839,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       if (mapNearMeButton) mapNearMeButton.disabled = false;
     };
 
-    const handleLocationSuccess = async (position) => {
+    const handleLocationSuccess = async (position, source = "high accuracy") => {
+      if (source === "high accuracy") diagnostics.highAccuracyResult = "success";
+      if (source === "fallback") diagnostics.fallbackResult = "success";
+
       try {
         await renderNearbyParks(
           position.coords.latitude,
@@ -821,21 +857,22 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     const handleFinalLocationError = (error) => {
       console.error(error);
 
+      diagnostics.errorCode = error?.code ?? null;
+      diagnostics.fallbackResult = "failed";
+
       let message = "Location unavailable — search an area above to explore the map.";
 
       if (error?.code === 1) {
-        message =
-          "Safari is not allowing this site to use your location. Check Website Settings → Location and iPhone Settings → Privacy & Security → Location Services → Safari Websites.";
+        message = "iOS/browser denied the location request.";
       } else if (error?.code === 2) {
-        message =
-          "Your iPhone could not determine a location. Make sure Location Services are enabled and try again.";
+        message = "Your device could not determine its location.";
       } else if (error?.code === 3) {
-        message =
-          "Location lookup timed out. Try again, or search by ZIP/city instead.";
+        message = "Location lookup timed out.";
       }
 
-      statusBox.textContent = message;
-      if (mapStatus) mapStatus.textContent = message;
+      const diagnosticText = formatLocationDiagnostics(diagnostics);
+      statusBox.textContent = `${message} ${diagnosticText}`;
+      if (mapStatus) mapStatus.textContent = `${message} ${diagnosticText}`;
 
       if (!nearbyMap) {
         ensureNearbyMap(43.0, -84.8, 7);
@@ -845,16 +882,22 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     };
 
     navigator.geolocation.getCurrentPosition(
-      handleLocationSuccess,
+      (position) => handleLocationSuccess(position, "high accuracy"),
       (firstError) => {
-        console.warn("High-accuracy location attempt failed; retrying with standard accuracy.", firstError);
+        diagnostics.highAccuracyResult = "failed";
+        diagnostics.errorCode = firstError?.code ?? null;
+
+        console.warn(
+          "High-accuracy location attempt failed; retrying with standard accuracy.",
+          firstError
+        );
 
         if (mapStatus) {
           mapStatus.textContent = "Trying a second location method...";
         }
 
         navigator.geolocation.getCurrentPosition(
-          handleLocationSuccess,
+          (position) => handleLocationSuccess(position, "fallback"),
           handleFinalLocationError,
           {
             enableHighAccuracy: false,
