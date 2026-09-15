@@ -877,9 +877,19 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
               `<strong>${escapeHTML(park.name)}</strong><br>` +
               (park.reference_code ? `${escapeHTML(park.reference_code)}<br>` : "") +
               `${Number(park.distance_miles).toFixed(1)} mi away<br>` +
-              `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}`
+              `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}` +
+              (park.reference_code
+                ? `<br><button type="button" class="map-popup-park-detail" data-park-ref="${escapeHTML(park.reference_code)}">View Park Details</button>`
+                : "")
             )
             .addTo(nearbyLayer);
+
+          parkMarker.on("popupopen", (event) => {
+            const button = event.popup.getElement()?.querySelector(".map-popup-park-detail");
+            if (button) {
+              button.addEventListener("click", () => openParkDetails(button.dataset.parkRef), { once: true });
+            }
+          });
 
           parkMarker.on("click", () => {
             document
