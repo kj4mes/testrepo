@@ -801,48 +801,71 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     statusBox.textContent = "Getting your location...";
     if (mapStatus) mapStatus.textContent = "Getting your location...";
 
+    const finishLocationAttempt = () => {
+      nearMeButton.disabled = false;
+      if (mapNearMeButton) mapNearMeButton.disabled = false;
+    };
+
+    const handleLocationSuccess = async (position) => {
+      try {
+        await renderNearbyParks(
+          position.coords.latitude,
+          position.coords.longitude,
+          "your current location"
+        );
+      } finally {
+        finishLocationAttempt();
+      }
+    };
+
+    const handleFinalLocationError = (error) => {
+      console.error(error);
+
+      let message = "Location unavailable — search an area above to explore the map.";
+
+      if (error?.code === 1) {
+        message =
+          "Safari is not allowing this site to use your location. Check Website Settings → Location and iPhone Settings → Privacy & Security → Location Services → Safari Websites.";
+      } else if (error?.code === 2) {
+        message =
+          "Your iPhone could not determine a location. Make sure Location Services are enabled and try again.";
+      } else if (error?.code === 3) {
+        message =
+          "Location lookup timed out. Try again, or search by ZIP/city instead.";
+      }
+
+      statusBox.textContent = message;
+      if (mapStatus) mapStatus.textContent = message;
+
+      if (!nearbyMap) {
+        ensureNearbyMap(43.0, -84.8, 7);
+      }
+
+      finishLocationAttempt();
+    };
+
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          await renderNearbyParks(
-            position.coords.latitude,
-            position.coords.longitude,
-            "your current location"
-          );
-        } finally {
-          nearMeButton.disabled = false;
-          if (mapNearMeButton) mapNearMeButton.disabled = false;
-        }
-      },
-      (error) => {
-        console.error(error);
+      handleLocationSuccess,
+      (firstError) => {
+        console.warn("High-accuracy location attempt failed; retrying with standard accuracy.", firstError);
 
-        let message = "Location unavailable — search an area above to explore the map.";
-
-        if (error?.code === 1) {
-          message =
-            "Location permission is blocked for this site. On iPhone, tap the page menu in Safari → Website Settings → Location → Allow, then try again.";
-        } else if (error?.code === 2) {
-          message =
-            "Your device could not determine its location. Check that iPhone Location Services are enabled, then try again.";
-        } else if (error?.code === 3) {
-          message =
-            "Location lookup timed out. Try again, or search by ZIP/city instead.";
+        if (mapStatus) {
+          mapStatus.textContent = "Trying a second location method...";
         }
 
-        statusBox.textContent = message;
-        if (mapStatus) mapStatus.textContent = message;
-
-        if (!nearbyMap) {
-          ensureNearbyMap(43.0, -84.8, 7);
-        }
-
-        nearMeButton.disabled = false;
-        if (mapNearMeButton) mapNearMeButton.disabled = false;
+        navigator.geolocation.getCurrentPosition(
+          handleLocationSuccess,
+          handleFinalLocationError,
+          {
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 300000
+          }
+        );
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 12000,
         maximumAge: 60000
       }
     );
