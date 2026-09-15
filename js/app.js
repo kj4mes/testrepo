@@ -801,6 +801,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       `Secure context: ${diag.secureContext ? "yes" : "no"}`,
       `Geolocation API: ${diag.geolocationAvailable ? "yes" : "no"}`,
       `Permission state: ${diag.permissionState}`,
+      `Policy allows geolocation: ${diag.policyAllowsGeolocation}`,
       `High-accuracy result: ${diag.highAccuracyResult}`,
       `Fallback result: ${diag.fallbackResult}`,
       `Error code: ${diag.errorCode ?? "none"}`
@@ -811,10 +812,23 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     statusBox.textContent = "";
     resultsBox.innerHTML = "";
 
+    const policyAllowsGeolocation = (() => {
+      try {
+        if (document.permissionsPolicy?.allowsFeature) {
+          return document.permissionsPolicy.allowsFeature("geolocation");
+        }
+        if (document.featurePolicy?.allowsFeature) {
+          return document.featurePolicy.allowsFeature("geolocation");
+        }
+      } catch {}
+      return "unavailable";
+    })();
+
     const diagnostics = {
       secureContext: window.isSecureContext,
       geolocationAvailable: Boolean(navigator.geolocation),
       permissionState: await getGeolocationPermissionState(),
+      policyAllowsGeolocation,
       highAccuracyResult: "not attempted",
       fallbackResult: "not attempted",
       errorCode: null
