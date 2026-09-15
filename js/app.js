@@ -3497,10 +3497,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       '<p>' +
       (verified
         ? 'Your operator account is ready. Submit an ADIF log or open the Quick Logger when you head to a park.'
-        : 'Your account is signed in. Uploading an ADIF log can verify and attach the activator callsign automatically.') +
+        : 'Verify your amateur-radio callsign before submitting activations.') +
       '</p>' +
       (operator?.license_class ? '<div class="dashboard-license-chip">' + escapeHTML(operator.license_class) + ' class</div>' : '') +
+      (!verified ? '<div style="margin-top:12px;"><button id="dashboardVerifyCallsignButton" type="button">Verify Your Callsign</button></div>' : '') +
       '</div>';
+
+    const dashboardVerifyCallsignButton = document.getElementById("dashboardVerifyCallsignButton");
+    if (dashboardVerifyCallsignButton) {
+      dashboardVerifyCallsignButton.addEventListener("click", () => showPanel("callsign"));
+    }
 
     dashboardStatActivations.textContent = rows.length.toLocaleString();
     dashboardStatParks.textContent = uniqueParks.toLocaleString();
