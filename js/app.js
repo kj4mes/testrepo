@@ -816,8 +816,20 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       },
       (error) => {
         console.error(error);
-        const message =
-          "Location unavailable — search an area above to explore the map.";
+
+        let message = "Location unavailable — search an area above to explore the map.";
+
+        if (error?.code === 1) {
+          message =
+            "Location permission is blocked for this site. On iPhone, tap the page menu in Safari → Website Settings → Location → Allow, then try again.";
+        } else if (error?.code === 2) {
+          message =
+            "Your device could not determine its location. Check that iPhone Location Services are enabled, then try again.";
+        } else if (error?.code === 3) {
+          message =
+            "Location lookup timed out. Try again, or search by ZIP/city instead.";
+        }
+
         statusBox.textContent = message;
         if (mapStatus) mapStatus.textContent = message;
 
