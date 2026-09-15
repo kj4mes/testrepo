@@ -39,6 +39,73 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     });
   }
 
+  function validMaidenheadGrid(value) {
+    return /^[A-R]{2}[0-9]{2}([A-X]{2})?$/i.test(String(value || "").trim());
+  }
+
+  async function enrichMissingQsoGrids(qsos, statusElement) {
+    const missingCalls = Array.from(
+      new Set(
+        (qsos || [])
+          .filter((qso) => !validMaidenheadGrid(qso.grid_square))
+          .map((qso) => String(qso.contacted_callsign || "").trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (!missingCalls.length) {
+      return { lookedUp: 0, filled: 0 };
+    }
+
+    if (statusElement) {
+      statusElement.textContent =
+        `Looking up grid squares for ${missingCalls.length} contact${missingCalls.length === 1 ? "" : "s"} with HamDB...`;
+    }
+
+    try {
+      const response = await fetch("/api/hamdb-grids", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ callsigns: missingCalls.slice(0, 100) })
+      });
+
+      if (!response.ok) {
+        throw new Error("HamDB grid lookup failed.");
+      }
+
+      const data = await response.json();
+      const grids = data?.grids || {};
+      let filled = 0;
+
+      (qsos || []).forEach((qso) => {
+        if (validMaidenheadGrid(qso.grid_square)) return;
+
+        const callsign = String(qso.contacted_callsign || "").trim().toUpperCase();
+        const grid = String(grids[callsign] || "").trim().toUpperCase();
+
+        if (!validMaidenheadGrid(grid)) return;
+
+        qso.grid_square = grid;
+        qso.raw_adif = {
+          ...(qso.raw_adif || {}),
+          GRIDSQUARE: grid,
+          CPW_GRID_SOURCE: "HamDB"
+        };
+        filled += 1;
+      });
+
+      return {
+        lookedUp: Number(data?.requested || missingCalls.length),
+        filled
+      };
+    } catch (error) {
+      console.warn("HamDB grid enrichment was unavailable:", error);
+      return { lookedUp: missingCalls.length, filled: 0 };
+    }
+  }
+
   async function openParkDetails(referenceCode) {
     if (!referenceCode) return;
 
@@ -2503,6 +2570,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       raw_adif: record
     }));
 
+    const gridEnrichment = await enrichMissingQsoGrids(
+      qsoPayload,
+      activationSubmitStatus
+    );
+
     activationSubmitStatus.textContent =
       "Validating and submitting activation securely...";
 
@@ -2551,6 +2623,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     activationSubmitStatus.textContent =
       `✓ Activation submitted for ${result?.park_name || selectedActivationPark.name}: ${qsoCount} unique valid QSO${qsoCount === 1 ? "" : "s"} logged under ${result?.callsign || operator.callsign} (${result?.license_class || operator.license_class} class; ${requiredQsos} required).` +
+      (gridEnrichment.filled
+        ? ` HamDB added grid squares to ${gridEnrichment.filled} QSO${gridEnrichment.filled === 1 ? "" : "s"} for distance mapping.`
+        : "") +
       (duplicatesRemoved
         ? ` ${duplicatesRemoved} duplicate QSO${duplicatesRemoved === 1 ? "" : "s"} removed.`
         : "");
@@ -2887,6 +2962,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     quickLoggerSubmitStatus.textContent = "Submitting activation securely...";
 
     try {
+      const gridEnrichment = await enrichMissingQsoGrids(
+        quickLoggerDraft.qsos,
+        quickLoggerSubmitStatus
+      );
+
+      quickLoggerSaveDraft();
+
       const stamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "");
       const { data: result, error } = await supabaseClient.rpc("submit_cpw_activation", {
         p_park_id: quickLoggerDraft.park.id,
@@ -2901,7 +2983,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       const count = Number(result?.qso_count || quickLoggerDraft.qsos.length);
 
       quickLoggerSubmitStatus.textContent =
-        `✓ Activation submitted for ${parkName}: ${count} valid QSO${count === 1 ? "" : "s"} logged.`;
+        `✓ Activation submitted for ${parkName}: ${count} valid QSO${count === 1 ? "" : "s"} logged.` +
+        (gridEnrichment.filled
+          ? ` HamDB added grid squares to ${gridEnrichment.filled} QSO${gridEnrichment.filled === 1 ? "" : "s"} for distance mapping.`
+          : "");
 
       quickLoggerDraft = { park: null, qsos: [] };
       quickLoggerSaveDraft();
