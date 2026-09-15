@@ -348,7 +348,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       panel.classList.toggle("active-panel", panel === target);
     });
 
-    panelLinks.forEach((link) => {
+    if (window.location.hash === "#map") {
+    ensureNearbyMap(43.0, -84.8, 7);
+    if (mapStatus) {
+      mapStatus.textContent = "Search an area above or use your current location.";
+    }
+  }
+
+  panelLinks.forEach((link) => {
       link.classList.toggle("active", link.dataset.panelLink === target.id);
     });
 
@@ -364,7 +371,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    if ((target.id === "parks" || target.id === "map") && nearbyMap) {
+    if (target.id === "map") {
+      if (!nearbyMap) {
+        ensureNearbyMap(43.0, -84.8, 7);
+        if (mapStatus && !mapStatus.textContent) {
+          mapStatus.textContent = "Search an area above or use your current location.";
+        }
+      }
+      setTimeout(() => nearbyMap.invalidateSize(), 100);
+    } else if (target.id === "parks" && nearbyMap) {
       setTimeout(() => nearbyMap.invalidateSize(), 100);
     }
   }
@@ -725,7 +740,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     legend.addTo(map);
   }
 
-  function ensureNearbyMap(lat, lon) {
+  function ensureNearbyMap(lat = 43.0, lon = -84.8, zoom = 7) {
     if (nearbyMap) {
       nearbyMap.remove();
       nearbyMap = null;
@@ -738,7 +753,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       boxZoom: true,
       keyboard: true,
       touchZoom: true
-    }).setView([lat, lon], 11);
+    }).setView([lat, lon], zoom);
 
     nearbyMap.on("click", () => {
       document
@@ -762,9 +777,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       popupAnchor: [0, -18]
     });
 
-    L.marker([lat, lon], { icon: userLocationIcon, zIndexOffset: 1000 })
-      .bindPopup("<strong>Your location</strong>")
-      .addTo(nearbyLayer);
+    if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)) && zoom >= 10) {
+      L.marker([lat, lon], { icon: userLocationIcon, zIndexOffset: 1000 })
+        .bindPopup("<strong>Your location</strong>")
+        .addTo(nearbyLayer);
+    }
 
     setTimeout(() => nearbyMap.invalidateSize(), 100);
   }
@@ -799,9 +816,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       },
       (error) => {
         console.error(error);
-        statusBox.textContent =
-          "Location permission was not granted or your location could not be determined.";
-        if (mapStatus) mapStatus.textContent = statusBox.textContent;
+        const message =
+          "Location unavailable — search an area above to explore the map.";
+        statusBox.textContent = message;
+        if (mapStatus) mapStatus.textContent = message;
+
+        if (!nearbyMap) {
+          ensureNearbyMap(43.0, -84.8, 7);
+        }
+
         nearMeButton.disabled = false;
         if (mapNearMeButton) mapNearMeButton.disabled = false;
       },
