@@ -106,17 +106,19 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   }
 
-  async function openParkDetails(referenceCode) {
+  async function openParkDetails(referenceCode, updateHistory = true) {
     if (!referenceCode) return;
 
     parkDetailStatus.textContent = "Loading park details...";
     parkDetailContent.innerHTML = "";
     showPanel("park-detail", false);
 
-    const url = new URL(window.location.href);
-    url.searchParams.set("park", referenceCode);
-    url.hash = "park-detail";
-    history.replaceState(null, "", url);
+    if (updateHistory) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("park", referenceCode);
+      url.hash = "park-detail";
+      history.pushState({ panel: "park-detail", park: referenceCode }, "", url);
+    }
 
     try {
       const { data, error } = await supabaseClient.rpc("cpw_park_details", {
@@ -314,11 +316,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   parkDetailBackButton.addEventListener("click", () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("park");
-    url.hash = "parks";
-    history.replaceState(null, "", url);
-    showPanel("parks", false);
+    if (history.length > 1) {
+      history.back();
+    } else {
+      showPanel("parks");
+    }
   });
 
   const headerAuthButton = document.getElementById("headerAuthButton");
@@ -354,12 +356,15 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     menuButton.setAttribute("aria-expanded", "false");
 
     if (updateHash && window.location.hash !== "#" + target.id) {
-      history.replaceState(null, "", "#" + target.id);
+      const url = new URL(window.location.href);
+      if (target.id !== "park-detail") url.searchParams.delete("park");
+      url.hash = target.id;
+      history.pushState({ panel: target.id }, "", url);
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    if (target.id === "parks" && nearbyMap) {
+    if ((target.id === "parks" || target.id === "map") && nearbyMap) {
       setTimeout(() => nearbyMap.invalidateSize(), 100);
     }
   }
@@ -372,12 +377,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   });
 
   headerAuthButton?.addEventListener("click", async () => {
-    const { data } = await supabaseClient.auth.getSession();
-    if (data?.session?.user) {
-      showPanel("dashboard");
-    } else {
-      showPanel("account");
-    }
+    showPanel("account");
   });
 
   function showCreateAccountForm() {
@@ -431,7 +431,23 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   });
 
   window.addEventListener("hashchange", () => {
-    showPanel(window.location.hash.slice(1) || "home", false);
+    const panelId = window.location.hash.slice(1) || "home";
+    const parkRef = new URL(window.location.href).searchParams.get("park");
+    if (panelId === "park-detail" && parkRef) {
+      openParkDetails(parkRef, false);
+    } else {
+      showPanel(panelId, false);
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    const panelId = window.location.hash.slice(1) || "home";
+    const parkRef = new URL(window.location.href).searchParams.get("park");
+    if (panelId === "park-detail" && parkRef) {
+      openParkDetails(parkRef, false);
+    } else {
+      showPanel(panelId, false);
+    }
   });
 
   const searchInput = document.getElementById("parkSearch");
@@ -3928,8 +3944,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     accountEmail.readOnly = true;
     await loadBasicAccountProfile(session);
     if (headerAuthButton) {
-      headerAuthButton.textContent = "Dashboard";
-      headerAuthButton.dataset.panelLink = "dashboard";
+      headerAuthButton.textContent = "Account";
+      headerAuthButton.dataset.panelLink = "account";
       headerAuthButton.classList.add("signed-in");
     }
     if (headerCreateAccountButton) {
@@ -3955,6 +3971,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         loadParkDetailSuggestions();
       }
       loadQualityReviewParks();
+    }
+
+    if (headerAuthButton) {
+      headerAuthButton.textContent = operator?.callsign || "Account";
+      headerAuthButton.dataset.panelLink = "account";
     }
 
     if (operator?.callsign) {
@@ -4034,7 +4055,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: "https://cityparkwaves.org/#account",
         data: {
           username: values.username,
           city: values.city,
