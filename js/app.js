@@ -652,6 +652,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const statusBox = document.getElementById("status");
   const resultsBox = document.getElementById("results");
   const nearMeButton = document.getElementById("nearMeButton");
+  const mapSearchInput = document.getElementById("mapSearch");
+  const mapSearchButton = document.getElementById("mapSearchButton");
+  const mapNearMeButton = document.getElementById("mapNearMeButton");
+  const mapStatus = document.getElementById("mapStatus");
   const parkQualityFilter = document.getElementById("parkQualityFilter");
   const nearbyStatus = statusBox;
   const nearbyResults = resultsBox;
@@ -776,7 +780,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
 
     nearMeButton.disabled = true;
+    if (mapNearMeButton) mapNearMeButton.disabled = true;
     statusBox.textContent = "Getting your location...";
+    if (mapStatus) mapStatus.textContent = "Getting your location...";
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -788,13 +794,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           );
         } finally {
           nearMeButton.disabled = false;
+          if (mapNearMeButton) mapNearMeButton.disabled = false;
         }
       },
       (error) => {
         console.error(error);
         statusBox.textContent =
           "Location permission was not granted or your location could not be determined.";
+        if (mapStatus) mapStatus.textContent = statusBox.textContent;
         nearMeButton.disabled = false;
+        if (mapNearMeButton) mapNearMeButton.disabled = false;
       },
       {
         enableHighAccuracy: true,
@@ -805,6 +814,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   nearMeButton.addEventListener("click", findNearbyParks);
+  mapNearMeButton?.addEventListener("click", findNearbyParks);
 
   parkQualityFilter.addEventListener("change", () => {
     if (lastNearbySearch) {
@@ -820,6 +830,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     lastNearbySearch = { lat, lon, label };
     ensureNearbyMap(lat, lon);
     statusBox.textContent = label ? `Finding parks near ${label}...` : "Finding nearby parks...";
+    if (mapStatus) mapStatus.textContent = statusBox.textContent;
     resultsBox.innerHTML = "";
 
     try {
@@ -832,18 +843,21 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       if (!response.ok) {
         statusBox.textContent =
           parks.error || "Unable to search nearby parks.";
+        if (mapStatus) mapStatus.textContent = statusBox.textContent;
         return;
       }
 
       if (!parks.length) {
         statusBox.textContent =
           "No mapped parks were found nearby yet.";
+        if (mapStatus) mapStatus.textContent = statusBox.textContent;
         return;
       }
 
       statusBox.textContent =
         `Showing the ${parks.length} nearest mapped park${parks.length === 1 ? "" : "s"}` +
         (label ? ` near ${label}.` : ".");
+      if (mapStatus) mapStatus.textContent = statusBox.textContent;
 
       const bounds = [[lat, lon]];
 
@@ -951,6 +965,31 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     };
   }
 
+  async function searchMap() {
+    const searchTerm = mapSearchInput?.value.trim() || "";
+
+    if (!searchTerm) {
+      if (mapStatus) mapStatus.textContent = "Enter a ZIP code, city, or county.";
+      return;
+    }
+
+    if (mapStatus) mapStatus.textContent = "Finding that area...";
+
+    try {
+      const location = await geocodeArea(searchTerm);
+
+      if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lon)) {
+        if (mapStatus) mapStatus.textContent = "That location could not be found.";
+        return;
+      }
+
+      await renderNearbyParks(location.lat, location.lon, searchTerm);
+    } catch (error) {
+      console.error(error);
+      if (mapStatus) mapStatus.textContent = "Unable to look up that location.";
+    }
+  }
+
   async function searchParks() {
     const searchTerm = searchInput.value.trim();
 
@@ -991,10 +1030,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   searchButton.addEventListener("click", searchParks);
+  mapSearchButton?.addEventListener("click", searchMap);
 
   searchInput.addEventListener("keydown", function(event) {
     if (event.key === "Enter") {
       searchParks();
+    }
+  });
+
+  mapSearchInput?.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      searchMap();
     }
   });
 
