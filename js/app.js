@@ -66,6 +66,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       const park = data.park;
       const stats = data.stats || {};
       const recent = data.recent_activations || [];
+      const longestContacts = data.longest_contacts || [];
       const location = [park.city, park.state, park.zip_code].filter(Boolean).join(", ");
       const mapQuery =
         park.latitude != null && park.longitude != null
@@ -126,7 +127,99 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
             </div>
           `).join("") : "<p>No activations have been submitted for this park yet.</p>"}
         </div>
+
+        <div class="park-detail-card">
+          <h3>🌎 Top 10 Longest Contacts</h3>
+          <p style="margin-top:0;color:#667987;">
+            Farthest logged contacts from this park where the contacted station's Maidenhead grid is available.
+          </p>
+          ${longestContacts.length ? `
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;border-bottom:1px solid #d8e2e8;">
+                    <th style="padding:8px 6px;">#</th>
+                    <th style="padding:8px 6px;">Call</th>
+                    <th style="padding:8px 6px;">Distance</th>
+                    <th style="padding:8px 6px;">Band / Mode</th>
+                    <th style="padding:8px 6px;">Grid</th>
+                    <th style="padding:8px 6px;">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${longestContacts.map((contact, index) => `
+                    <tr style="border-bottom:1px solid #eef3f6;">
+                      <td style="padding:8px 6px;">${index + 1}</td>
+                      <td style="padding:8px 6px;"><strong>${escapeHTML(contact.contacted_callsign)}</strong></td>
+                      <td style="padding:8px 6px;">${Number(contact.distance_miles || 0).toLocaleString(undefined,{maximumFractionDigits:1})} mi</td>
+                      <td style="padding:8px 6px;">${escapeHTML([contact.band, contact.mode].filter(Boolean).join(" / "))}</td>
+                      <td style="padding:8px 6px;">${escapeHTML(contact.contacted_grid || "")}</td>
+                      <td style="padding:8px 6px;">${parkDetailDate(contact.qso_datetime)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+            <div id="parkLongestContactsMap" style="height:380px;margin-top:18px;border-radius:14px;overflow:hidden;border:1px solid #d8e2e8;"></div>
+          ` : "<p>No contacts with a usable Maidenhead grid have been logged from this park yet.</p>"}
+        </div>
       `;
+
+      if (
+        longestContacts.length &&
+        park.latitude != null &&
+        park.longitude != null &&
+        document.getElementById("parkLongestContactsMap")
+      ) {
+        const parkLat = Number(park.latitude);
+        const parkLon = Number(park.longitude);
+        const longestMap = L.map("parkLongestContactsMap", {
+          scrollWheelZoom: false
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(longestMap);
+
+        const bounds = [[parkLat, parkLon]];
+
+        L.marker([parkLat, parkLon])
+          .addTo(longestMap)
+          .bindPopup(
+            `<strong>${escapeHTML(park.name)}</strong><br>${escapeHTML(park.reference_code)}`
+          );
+
+        longestContacts.forEach((contact, index) => {
+          const lat = Number(contact.contact_latitude);
+          const lon = Number(contact.contact_longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+          bounds.push([lat, lon]);
+
+          L.polyline(
+            [[parkLat, parkLon], [lat, lon]],
+            { weight: 2, opacity: 0.7 }
+          ).addTo(longestMap);
+
+          L.marker([lat, lon])
+            .addTo(longestMap)
+            .bindPopup(
+              `<strong>#${index + 1} ${escapeHTML(contact.contacted_callsign)}</strong><br>` +
+              `${Number(contact.distance_miles || 0).toLocaleString(undefined,{maximumFractionDigits:1})} miles<br>` +
+              `${escapeHTML([contact.band, contact.mode].filter(Boolean).join(" / "))}<br>` +
+              `${escapeHTML(contact.contacted_grid || "")}`
+            );
+        });
+
+        if (bounds.length > 1) {
+          longestMap.fitBounds(bounds, { padding: [28, 28] });
+        } else {
+          longestMap.setView([parkLat, parkLon], 8);
+        }
+
+        setTimeout(() => longestMap.invalidateSize(), 100);
+      }
 
       const suggestButton = document.getElementById("suggestParkDetailsButton");
       if (suggestButton) {
