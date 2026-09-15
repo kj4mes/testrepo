@@ -808,7 +808,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     ].join(" • ");
   }
 
-  async function findNearbyParks() {
+  function findNearbyParks() {
     statusBox.textContent = "";
     resultsBox.innerHTML = "";
 
@@ -827,7 +827,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     const diagnostics = {
       secureContext: window.isSecureContext,
       geolocationAvailable: Boolean(navigator.geolocation),
-      permissionState: await getGeolocationPermissionState(),
+      permissionState: "not checked",
       policyAllowsGeolocation,
       highAccuracyResult: "not attempted",
       fallbackResult: "not attempted",
@@ -868,16 +868,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       }
     };
 
-    const handleFinalLocationError = (error) => {
+    const handleFinalLocationError = async (error) => {
       console.error(error);
 
       diagnostics.errorCode = error?.code ?? null;
       diagnostics.fallbackResult = "failed";
+      diagnostics.permissionState = await getGeolocationPermissionState();
 
       let message = "Location unavailable — search an area above to explore the map.";
 
       if (error?.code === 1) {
-        message = "iOS/browser denied the location request.";
+        message = "The browser denied the location request.";
       } else if (error?.code === 2) {
         message = "Your device could not determine its location.";
       } else if (error?.code === 3) {
