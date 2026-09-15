@@ -39,6 +39,7 @@
 
   <nav class="top-tabs" aria-label="Primary navigation">
     <a href="#home" data-panel-link="home">Home</a>
+    <a href="#map" data-panel-link="map">Map</a>
     <a href="#parks" data-panel-link="parks">Find Parks</a>
     <a href="#activity" data-panel-link="activity">Activity</a>
     <a href="#hunters" data-panel-link="hunters">Hunters</a>
@@ -64,6 +65,7 @@
 
     <nav id="menuPanel" class="menu-panel" aria-label="More navigation">
       <a href="#home" data-panel-link="home">Home</a>
+      <a href="#map" data-panel-link="map">Map</a>
       <a href="#parks" data-panel-link="parks">Find Parks</a>
       <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
       <a href="#hunters" data-panel-link="hunters">Hunter Stats</a>
@@ -183,6 +185,22 @@
       <a class="button primary" href="#activity" data-panel-link="activity">🔥 See Recent Activity</a>
       <a class="button secondary" href="#rules" data-panel-link="rules">📜 Activation Rules</a>
     </div>
+  </div>
+</section>
+
+<section class="section app-panel" id="map">
+  <h2>Explore the Park Map</h2>
+  <p>Search an area or use your location to explore City Park Waves parks on the map.</p>
+
+  <div class="search">
+    <div class="search-row">
+      <input id="mapSearch" type="text" placeholder="Enter ZIP, city, or county">
+      <button id="mapSearchButton" type="button">Search Map</button>
+    </div>
+    <div style="margin-top:12px;">
+      <button id="mapNearMeButton" type="button">Use My Current Location</button>
+    </div>
+    <div id="mapStatus" style="margin-top:14px;"></div>
   </div>
 </section>
 
@@ -1188,7 +1206,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260914-2315"></script>
+  <script src="/js/app.js?v=20260915-1700"></script>
 
 
 </body>
