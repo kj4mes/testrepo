@@ -3815,3 +3815,187 @@
     min-width: 0;
   }
 }
+
+
+/* Enriched park detail pilot */
+.park-detail-photo-wrap {
+  margin: -26px -26px 20px;
+  overflow: hidden;
+  border-radius: 24px 24px 16px 16px;
+  max-height: 360px;
+}
+
+.park-detail-photo {
+  display: block;
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+}
+
+.park-detail-photo-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 150px;
+  margin: -6px 0 20px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(74,222,128,.18), rgba(56,189,248,.18)),
+    #f7fbfd;
+  color: #557083;
+  font-size: 42px;
+}
+
+.park-detail-manager {
+  margin-top: 7px;
+  color: #456376;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.park-card-heading-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.park-card-heading-row h3 {
+  margin: 0;
+}
+
+.park-source-badge {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #eaf8f3;
+  color: #176247;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.park-detail-description {
+  color: #415f72;
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+.park-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.park-detail-fact {
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: #f5f9fb;
+  border: 1px solid #e1ebef;
+}
+
+.park-detail-fact span,
+.park-detail-fact strong {
+  display: block;
+}
+
+.park-detail-fact span {
+  color: #6d828f;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 4px;
+}
+
+.park-detail-fact strong {
+  color: #17324d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.park-amenities-section {
+  margin-top: 20px;
+}
+
+.park-amenities-section h4 {
+  margin: 0 0 10px;
+  color: #17324d;
+}
+
+.park-amenity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.park-amenity-chip {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #eef8fc;
+  color: #19627d;
+  border: 1px solid #d5eaf2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.park-accessibility-note {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff9e8;
+  border: 1px solid #f2df9c;
+}
+
+.park-accessibility-note strong,
+.park-accessibility-note span {
+  display: block;
+}
+
+.park-accessibility-note strong {
+  color: #70580a;
+  margin-bottom: 4px;
+}
+
+.park-accessibility-note span {
+  color: #6c6137;
+  line-height: 1.5;
+}
+
+.park-detail-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e8eef1;
+  font-size: 12px;
+  color: #718692;
+}
+
+.park-detail-source-row a {
+  color: #0f766e;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .park-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .park-card-heading-row {
+    flex-direction: column;
+  }
+
+  .park-source-badge {
+    white-space: normal;
+  }
+
+  .park-detail-photo {
+    height: 220px;
+  }
+}
