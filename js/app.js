@@ -195,6 +195,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
                 href="${escapeHTML(park.photo_source_url)}"
                 target="_blank"
                 rel="noopener noreferrer">View Official Park Photos</a>` : ""}
+            <button type="button" class="park-plan-activation">Plan / Log Activation</button>
           </div>
         </div>
 
@@ -211,9 +212,19 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
             <strong>${parkDetailDate(stats.first_activation_at)}</strong>
             First Activation
           </div>
+          <div class="park-detail-stat">
+            <strong>${parkDetailDate(stats.last_activation_at)}</strong>
+            Last Activation
+          </div>
         </div>
 
-        <div class="park-detail-card park-overview-card">
+        <nav class="park-detail-section-nav" aria-label="Park detail sections">
+          <button type="button" data-park-section="parkOverviewSection">Overview</button>
+          <button type="button" data-park-section="parkActivationsSection">Activations</button>
+          <button type="button" data-park-section="parkContactsSection">Contacts</button>
+        </nav>
+
+        <div class="park-detail-card park-overview-card" id="parkOverviewSection">
           <div class="park-card-heading-row">
             <h3>Park Overview</h3>
             ${park.official_source_url ? `
@@ -266,8 +277,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           </div>
         </div>
 
-        <div class="park-detail-card">
-          <h3>Recent Activations</h3>
+        <div class="park-detail-card" id="parkActivationsSection">
+          <div class="park-card-heading-row">
+            <h3>Recent Activations</h3>
+            <span class="park-section-summary">${Number(stats.activations || 0).toLocaleString()} total</span>
+          </div>
           ${recent.length ? recent.map((activation) => `
             <div class="recent-activation-row">
               <div><strong>${escapeHTML(activation.station_callsign)}</strong></div>
@@ -276,8 +290,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           `).join("") : "<p>No activations have been submitted for this park yet.</p>"}
         </div>
 
-        <div class="park-detail-card">
-          <h3>🌎 Top 10 Longest Contacts</h3>
+        <div class="park-detail-card" id="parkContactsSection">
+          <div class="park-card-heading-row">
+            <h3>🌎 Top 10 Longest Contacts</h3>
+            <span class="park-section-summary">${Number(stats.qsos || 0).toLocaleString()} logged QSOs</span>
+          </div>
           <p style="margin-top:0;color:#667987;">
             Farthest logged contacts from this park where the contacted station's Maidenhead grid is available.
           </p>
@@ -312,6 +329,19 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           ` : "<p>No contacts with a usable Maidenhead grid have been logged from this park yet.</p>"}
         </div>
       `;
+
+      parkDetailContent.querySelectorAll("[data-park-section]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.getElementById(button.dataset.parkSection)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        });
+      });
+
+      parkDetailContent.querySelector(".park-plan-activation")?.addEventListener("click", () => {
+        showPanel("dashboard");
+      });
 
       if (
         longestContacts.length &&
