@@ -319,7 +319,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     if (history.length > 1) {
       history.back();
     } else {
-      showPanel("parks");
+      showPanel("map");
     }
   });
 
@@ -333,6 +333,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let adminUsersLoadVersion = 0;
 
   function showPanel(panelId, updateHash = true) {
+    if (panelId === "parks") {
+      panelId = "map";
+    }
+
     const adminPanel =
       panelId === "admin-users" ||
       panelId === "admin-review" ||
@@ -369,8 +373,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       if (nearbyMap) {
         setTimeout(() => nearbyMap.invalidateSize(), 100);
       }
-    } else if (target.id === "parks" && nearbyMap) {
-      setTimeout(() => nearbyMap.invalidateSize(), 100);
     }
   }
 
