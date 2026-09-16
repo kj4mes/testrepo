@@ -677,6 +677,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let nearbyLayer = null;
   let lastNearbySearch = null;
   let initialMapDiscoveryStarted = false;
+  let mapMoveLoadTimer = null;
+  let suppressMapMoveLoad = false;
 
   function activationMarkerLevel(count) {
     const value = Math.max(0, Number(count || 0));
@@ -740,6 +742,105 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     legend.addTo(map);
   }
 
+  function addParkMarkerToMap(park) {
+    if (!nearbyLayer) return;
+
+    const plat = Number(park.latitude);
+    const plon = Number(park.longitude);
+    if (!Number.isFinite(plat) || !Number.isFinite(plon)) return;
+
+    const activationCount = Math.max(0, Number(park.activation_count || 0));
+
+    const parkMarker = L.marker([plat, plon], {
+      icon: parkActivationIcon(park)
+    })
+      .bindPopup(
+        `<strong>${escapeHTML(park.name)}</strong><br>` +
+        (park.reference_code ? `${escapeHTML(park.reference_code)}<br>` : "") +
+        `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}` +
+        (park.reference_code
+          ? `<br><button type="button" class="map-popup-park-detail" data-park-ref="${escapeHTML(park.reference_code)}">View Park Details</button>`
+          : "")
+      )
+      .addTo(nearbyLayer);
+
+    parkMarker.on("popupopen", (event) => {
+      const button = event.popup.getElement()?.querySelector(".map-popup-park-detail");
+      if (button) {
+        button.addEventListener("click", () => openParkDetails(button.dataset.parkRef), { once: true });
+      }
+    });
+
+    parkMarker.on("click", () => {
+      document
+        .querySelectorAll(".park-identity-marker.show-identity")
+        .forEach((item) => item.classList.remove("show-identity"));
+
+      const element = parkMarker.getElement();
+      const identity = element?.querySelector(".park-identity-marker");
+      if (identity) identity.classList.add("show-identity");
+
+      showMapParkDrawer(park);
+    });
+  }
+
+  async function loadParksForVisibleMap() {
+    if (!nearbyMap || suppressMapMoveLoad) return;
+
+    const zoom = nearbyMap.getZoom();
+
+    if (zoom < 7) {
+      if (mapStatus) {
+        mapStatus.textContent = "Zoom in a little to load parks in the visible area.";
+      }
+      return;
+    }
+
+    const bounds = nearbyMap.getBounds();
+    const params = new URLSearchParams({
+      south: String(bounds.getSouth()),
+      west: String(bounds.getWest()),
+      north: String(bounds.getNorth()),
+      east: String(bounds.getEast()),
+      limit: zoom >= 11 ? "400" : "250"
+    });
+
+    if (mapStatus) {
+      mapStatus.textContent = "Loading parks in this map area…";
+    }
+
+    try {
+      const response = await fetch(`/api/nearby-parks?${params.toString()}`, {
+        cache: "no-store"
+      });
+      const parks = await response.json();
+
+      if (!response.ok) {
+        throw new Error(parks?.error || "Unable to load parks.");
+      }
+
+      nearbyLayer.clearLayers();
+      parks.forEach(addParkMarkerToMap);
+      renderMapDiscoveryList(parks);
+
+      if (mapStatus) {
+        mapStatus.textContent =
+          `${parks.length} park${parks.length === 1 ? "" : "s"} in the visible map area.`;
+      }
+    } catch (error) {
+      console.error("Visible map park load failed:", error);
+      if (mapStatus) {
+        mapStatus.textContent = "Unable to load parks for this map area.";
+      }
+    }
+  }
+
+  function scheduleVisibleMapLoad() {
+    if (suppressMapMoveLoad) return;
+    clearTimeout(mapMoveLoadTimer);
+    mapMoveLoadTimer = setTimeout(loadParksForVisibleMap, 450);
+  }
+
   function ensureNearbyMap(lat = 43.0, lon = -84.8, zoom = 7) {
     if (nearbyMap) {
       nearbyMap.remove();
@@ -760,6 +861,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         .querySelectorAll(".park-identity-marker.show-identity")
         .forEach((item) => item.classList.remove("show-identity"));
     });
+
+    nearbyMap.on("moveend", scheduleVisibleMapLoad);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
@@ -1047,6 +1150,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   async function renderNearbyParks(lat, lon, label) {
     lastNearbySearch = { lat, lon, label };
+    suppressMapMoveLoad = true;
     ensureNearbyMap(lat, lon);
     statusBox.textContent = label ? `Finding parks near ${label}...` : "Finding nearby parks...";
     if (mapStatus) mapStatus.textContent = statusBox.textContent;
@@ -1093,41 +1197,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
         if (Number.isFinite(plat) && Number.isFinite(plon)) {
           bounds.push([plat, plon]);
-
-          const activationCount = Math.max(0, Number(park.activation_count || 0));
-
-          const parkMarker = L.marker([plat, plon], {
-            icon: parkActivationIcon(park)
-          })
-            .bindPopup(
-              `<strong>${escapeHTML(park.name)}</strong><br>` +
-              (park.reference_code ? `${escapeHTML(park.reference_code)}<br>` : "") +
-              `${Number(park.distance_miles).toFixed(1)} mi away<br>` +
-              `<strong>${activationCount.toLocaleString()}</strong> activation${activationCount === 1 ? "" : "s"}` +
-              (park.reference_code
-                ? `<br><button type="button" class="map-popup-park-detail" data-park-ref="${escapeHTML(park.reference_code)}">View Park Details</button>`
-                : "")
-            )
-            .addTo(nearbyLayer);
-
-          parkMarker.on("popupopen", (event) => {
-            const button = event.popup.getElement()?.querySelector(".map-popup-park-detail");
-            if (button) {
-              button.addEventListener("click", () => openParkDetails(button.dataset.parkRef), { once: true });
-            }
-          });
-
-          parkMarker.on("click", () => {
-            document
-              .querySelectorAll(".park-identity-marker.show-identity")
-              .forEach((item) => item.classList.remove("show-identity"));
-
-            const element = parkMarker.getElement();
-            const identity = element?.querySelector(".park-identity-marker");
-            if (identity) identity.classList.add("show-identity");
-
-            showMapParkDrawer(park);
-          });
+          addParkMarkerToMap(park);
         }
 
         const card = document.createElement("div");
@@ -1168,9 +1238,14 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         setTimeout(() => nearbyMap.invalidateSize(), 100);
       }
 
+      setTimeout(() => {
+        suppressMapMoveLoad = false;
+      }, 650);
+
     } catch (error) {
       console.error(error);
       statusBox.textContent = "Unable to search nearby parks.";
+      suppressMapMoveLoad = false;
     }
   }
 
