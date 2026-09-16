@@ -39,6 +39,21 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     });
   }
 
+  function canDisplayParkPhoto(park) {
+    const allowedStatuses = new Set([
+      "licensed",
+      "public_domain",
+      "user_granted",
+      "permission_granted",
+      "reuse_allowed"
+    ]);
+
+    return Boolean(
+      park?.photo_url &&
+      allowedStatuses.has(String(park?.photo_usage_status || "").toLowerCase())
+    );
+  }
+
   function validMaidenheadGrid(value) {
     return /^[A-R]{2}[0-9]{2}([A-X]{2})?$/i.test(String(value || "").trim());
   }
@@ -149,9 +164,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
       parkDetailContent.innerHTML = `
         <div class="park-detail-hero">
-          ${park.photo_url ? `
+          ${canDisplayParkPhoto(park) ? `
             <div class="park-detail-photo-wrap">
               <img class="park-detail-photo" src="${escapeHTML(park.photo_url)}" alt="${escapeHTML(park.name)}">
+              ${park.photo_attribution ? `
+                <div class="park-photo-attribution">${escapeHTML(park.photo_attribution)}</div>` : ""}
             </div>` : `
             <div class="park-detail-photo-placeholder" aria-hidden="true">🌳📡</div>`
           }
@@ -173,6 +190,11 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
                 href="${escapeHTML(park.website_url)}"
                 target="_blank"
                 rel="noopener noreferrer">Official Park Website</a>` : ""}
+            ${!canDisplayParkPhoto(park) && park.photo_source_url ? `
+              <a class="tertiary"
+                href="${escapeHTML(park.photo_source_url)}"
+                target="_blank"
+                rel="noopener noreferrer">View Official Park Photos</a>` : ""}
           </div>
         </div>
 
