@@ -566,7 +566,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   });
 
-  const searchInput = document.getElementById("parkSearch");
   const callsignInput = document.getElementById("callsignInput");
   const callsignButton = document.getElementById("callsignButton");
   const callsignStatus = document.getElementById("callsignStatus");
@@ -764,10 +763,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     activationRequirement.textContent =
       `Verified callsign: ${operator.callsign} • License class: ${currentActivationLicenseClass} • ${currentActivationRequirement} valid QSOs required`;
   }
-  const searchButton = document.getElementById("searchButton");
-  const statusBox = document.getElementById("status");
-  const resultsBox = document.getElementById("results");
-  const nearMeButton = document.getElementById("nearMeButton");
   const mapSearchInput = document.getElementById("mapSearch");
   const mapSearchButton = document.getElementById("mapSearchButton");
   const mapNearMeButton = document.getElementById("mapNearMeButton");
@@ -782,8 +777,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const mapParkDrawerContent = document.getElementById("mapParkDrawerContent");
   const mapParkDrawerClose = document.getElementById("mapParkDrawerClose");
   const parkQualityFilter = document.getElementById("parkQualityFilter");
-  const nearbyStatus = statusBox;
-  const nearbyResults = resultsBox;
   let nearbyMap = null;
   let nearbyLayer = null;
   let lastNearbySearch = null;
@@ -1085,22 +1078,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   function findNearbyParks() {
-    statusBox.textContent = "";
-    resultsBox.innerHTML = "";
-
     if (!navigator.geolocation) {
       const message =
         "Your browser does not support location access. Search by ZIP, city, or county instead.";
-      statusBox.textContent = message;
       if (mapStatus) mapStatus.textContent = message;
       return;
     }
 
-    nearMeButton.disabled = true;
     if (mapNearMeButton) mapNearMeButton.disabled = true;
 
     const message = "Getting your current location...";
-    statusBox.textContent = message;
     if (mapStatus) mapStatus.textContent = message;
 
     navigator.geolocation.getCurrentPosition(
@@ -1112,7 +1099,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
             "your current location"
           );
         } finally {
-          nearMeButton.disabled = false;
           if (mapNearMeButton) mapNearMeButton.disabled = false;
         }
       },
@@ -1122,14 +1108,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         const fallbackMessage =
           "Location isn’t available here right now. Search by city, ZIP, county, or park area instead.";
 
-        statusBox.textContent = fallbackMessage;
         if (mapStatus) mapStatus.textContent = fallbackMessage;
 
         if (!nearbyMap) {
           ensureNearbyMap(43.0, -84.8, 7);
         }
 
-        nearMeButton.disabled = false;
         if (mapNearMeButton) mapNearMeButton.disabled = false;
       },
       {
@@ -1140,7 +1124,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     );
   }
 
-  nearMeButton.addEventListener("click", findNearbyParks);
   mapNearMeButton?.addEventListener("click", findNearbyParks);
 
   parkQualityFilter.addEventListener("change", () => {
@@ -1263,9 +1246,9 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     lastNearbySearch = { lat, lon, label };
     suppressMapMoveLoad = true;
     ensureNearbyMap(lat, lon);
-    statusBox.textContent = label ? `Finding parks near ${label}...` : "Finding nearby parks...";
-    if (mapStatus) mapStatus.textContent = statusBox.textContent;
-    resultsBox.innerHTML = "";
+
+    const loadingMessage = label ? `Finding parks near ${label}...` : "Finding nearby parks...";
+    if (mapStatus) mapStatus.textContent = loadingMessage;
 
     try {
       const response = await fetch(
@@ -1275,22 +1258,18 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       const parks = await response.json();
 
       if (!response.ok) {
-        statusBox.textContent =
-          parks.error || "Unable to search nearby parks.";
-        if (mapStatus) mapStatus.textContent = statusBox.textContent;
+        if (mapStatus) {
+          mapStatus.textContent = parks.error || "Unable to search nearby parks.";
+        }
         return;
       }
 
       if (!parks.length) {
-        statusBox.textContent =
-          "No mapped parks were found nearby yet.";
-        if (mapStatus) mapStatus.textContent = statusBox.textContent;
+        if (mapStatus) mapStatus.textContent = "No mapped parks were found nearby yet.";
+        renderMapDiscoveryList([]);
         return;
       }
 
-      statusBox.textContent =
-        `Showing the ${parks.length} nearest mapped park${parks.length === 1 ? "" : "s"}` +
-        (label ? ` near ${label}.` : ".");
       if (mapStatus) {
         mapStatus.textContent =
           `${parks.length} park${parks.length === 1 ? "" : "s"} found` +
@@ -1310,35 +1289,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           bounds.push([plat, plon]);
           addParkMarkerToMap(park);
         }
-
-        const card = document.createElement("div");
-        card.className = "park-result";
-
-        card.innerHTML = `
-          <h3>${escapeHTML(park.name)}</h3>
-          <p><strong>Location:</strong> ${escapeHTML([park.city, park.state, park.zip_code].filter(Boolean).join(", "))}</p>
-          <p><strong>Distance:</strong> ${Number(park.distance_miles).toFixed(1)} miles</p>
-          ${park.reference_code ? `<p><strong>CPW:</strong> ${escapeHTML(park.reference_code)}</p>` : ""}
-          ${Number(park.activation_count || 0) > 0 ? `<p><strong>📡 Activity:</strong> ${Number(park.activation_count).toLocaleString()} activation${Number(park.activation_count) === 1 ? "" : "s"}</p>` : ""}
-          ${park.photo_url ? `<img src="${escapeHTML(park.photo_url)}" alt="${escapeHTML(park.name)}" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:10px;">` : ""}
-          ${park.website_url ? `<a class="map-link" href="${escapeHTML(park.website_url)}" target="_blank" rel="noopener noreferrer">Park Website</a>` : ""}
-          <a
-            class="map-link"
-            href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${park.latitude},${park.longitude}`)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >View on Google Maps</a>
-          ${park.reference_code ? `<button class="park-detail-button" data-park-ref="${escapeHTML(park.reference_code)}">Park Details</button>` : ""}
-        `;
-
-        const detailsButton = card.querySelector("[data-park-ref]");
-        if (detailsButton) {
-          detailsButton.addEventListener("click", () => {
-            openParkDetails(detailsButton.dataset.parkRef);
-          });
-        }
-
-        resultsBox.appendChild(card);
       });
 
       if (bounds.length > 1) {
@@ -1355,7 +1305,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     } catch (error) {
       console.error(error);
-      statusBox.textContent = "Unable to search nearby parks.";
+      if (mapStatus) mapStatus.textContent = "Unable to search nearby parks.";
       suppressMapMoveLoad = false;
     }
   }
@@ -1412,34 +1362,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
   }
 
-  async function searchParks() {
-    const searchTerm = searchInput.value.trim();
-
-    if (!searchTerm) {
-      statusBox.textContent = "Enter a ZIP code, city, or county.";
-      resultsBox.innerHTML = "";
-      return;
-    }
-
-    statusBox.textContent = "Finding that area...";
-    resultsBox.innerHTML = "";
-
-    try {
-      const location = await geocodeArea(searchTerm);
-
-      if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lon)) {
-        statusBox.textContent = "That location could not be found.";
-        return;
-      }
-
-      await renderNearbyParks(location.lat, location.lon, searchTerm);
-
-    } catch (error) {
-      console.error(error);
-      statusBox.textContent = "Unable to look up that location.";
-    }
-  }
-
   function escapeHTML(value) {
     if (value === null || value === undefined) return "";
 
@@ -1451,14 +1373,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       .replaceAll("'", "&#039;");
   }
 
-  searchButton.addEventListener("click", searchParks);
   mapSearchButton?.addEventListener("click", searchMap);
 
-  searchInput.addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-      searchParks();
-    }
-  });
 
   mapSearchInput?.addEventListener("keydown", function(event) {
     if (event.key === "Enter") {
