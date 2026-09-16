@@ -10,7 +10,7 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   >
 
-    <link rel="stylesheet" href="/css/site.css?v=20260916-0030">
+    <link rel="stylesheet" href="/css/site.css?v=20260915-2315">
 
 </head>
 
@@ -115,19 +115,6 @@
     </div>
 
     <div class="home-actions">
-      <article class="home-action-card green">
-        <div class="home-action-icon">📍</div>
-        <h3>Explore Parks</h3>
-        <p>Open the live map to see nearby parks, pan to explore, or switch to list view.</p>
-        <a class="home-card-link" href="#map" data-panel-link="map">Open Park Map →</a>
-      </article>
-
-      <article class="home-action-card blue">
-        <div class="home-action-icon">📡</div>
-        <h3>Operator Dashboard</h3>
-        <p>Submit activation logs, use the Quick Logger, and manage your operator activity.</p>
-        <a class="home-card-link" href="#dashboard" data-panel-link="dashboard">Open Dashboard →</a>
-      </article>
 
       <article class="home-action-card yellow">
         <div class="home-action-icon">⭐</div>
@@ -179,9 +166,8 @@
     </div>
 
     <div class="home-tagline">Same hobby. More parks. More reasons to get outside.</div>
-    <div style="text-align:center;margin-top:14px;">
-      <a class="button primary" href="#activity" data-panel-link="activity">🔥 See Recent Activity</a>
-      <a class="button secondary" href="#rules" data-panel-link="rules">📜 Activation Rules</a>
+    <div class="home-rules-link">
+      <a href="#rules" data-panel-link="rules">📜 Read the Activation Rules</a>
     </div>
   </div>
 </section>
@@ -242,39 +228,6 @@
       </div>
     </div>
   </div>
-</section>
-
-<section class="section app-panel" id="parks">
-
-  <h2>Find Parks Near You</h2>
-
-  <p>
-    Use your current location, or search by ZIP code, city, or county.
-  </p>
-
-  <div class="search">
-
-    <div class="search-row">
-      <input
-        id="parkSearch"
-        type="text"
-        placeholder="Enter ZIP, city, or county"
-      >
-
-      <button id="searchButton">
-        Search Area
-      </button>
-    </div>
-
-    <div style="margin-top:12px;">
-      <button id="nearMeButton">Use My Current Location</button>
-    </div>
-
-    <div id="status" style="margin-top:14px;"></div>
-    <div id="results"></div>
-
-  </div>
-
 </section>
 
 <section class="section app-panel" id="park-detail">
@@ -1232,7 +1185,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260916-0030"></script>
+  <script src="/js/app.js?v=20260915-2315"></script>
 
 
 </body>
