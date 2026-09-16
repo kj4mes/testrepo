@@ -12,6 +12,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   async function loadHomeStats() {
+    if (!homeStatParks || !homeStatOperators || !homeStatActivations || !homeStatQsos) return;
+
     try {
       const { data, error } = await supabaseClient.rpc("cpw_public_stats");
 
@@ -23,8 +25,16 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       homeStatQsos.textContent = formatHomeStat(data?.qsos);
     } catch (error) {
       console.error("Could not load home statistics:", error);
+      homeStatParks.textContent = "—";
+      homeStatOperators.textContent = "—";
+      homeStatActivations.textContent = "—";
+      homeStatQsos.textContent = "—";
     }
   }
+
+  // Load these immediately. This keeps the home stats independent from the
+  // rest of the application initialization.
+  loadHomeStats();
 
   const parkDetailStatus = document.getElementById("parkDetailStatus");
   const parkDetailContent = document.getElementById("parkDetailContent");
@@ -4772,7 +4782,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     showPanel(window.location.hash.slice(1) || "home", false);
   }
 
-  loadHomeStats();
   loadPublicActivity();
   loadLeaderboard("all");
   refreshHunterStats();
