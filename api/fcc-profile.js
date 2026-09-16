@@ -21,10 +21,32 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Your sign-in session is not valid." });
     }
 
+    const user = await userResponse.json();
     const callsign = String(req.query.callsign || "").trim().toUpperCase();
 
     if (!/^[A-Z0-9]{3,6}$/.test(callsign)) {
       return res.status(400).json({ error: "Enter a valid amateur radio callsign." });
+    }
+
+    const operatorResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/operators?auth_user_id=eq.${encodeURIComponent(user.id)}&select=callsign,callsign_verified&limit=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: SUPABASE_KEY,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    const operatorRows = operatorResponse.ok ? await operatorResponse.json() : [];
+    const requesterVerified = Boolean(operatorRows?.[0]?.callsign_verified);
+    const bootstrapCallsign = String(user?.user_metadata?.callsign || "").trim().toUpperCase();
+
+    if (!requesterVerified && callsign !== bootstrapCallsign) {
+      return res.status(403).json({
+        error: "Full FCC records are available only to verified amateur accounts."
+      });
     }
 
     const endpoint =
