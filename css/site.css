@@ -3999,3 +3999,18 @@
     height: 220px;
   }
 }
+
+
+.park-detail-actions .tertiary {
+  background: #eef4f6;
+  color: #29495b;
+  border: 1px solid #d3e0e5;
+}
+
+.park-photo-attribution {
+  padding: 7px 10px;
+  background: #f7fafb;
+  color: #6c808c;
+  font-size: 11px;
+  border-top: 1px solid #e3ecef;
+}
