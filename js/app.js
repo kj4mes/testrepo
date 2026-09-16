@@ -3528,6 +3528,35 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         '<div class="operator-profile-grid"><div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>📻</span><h3>Top Bands</h3></div></div>' + bandsHtml + '</div><div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>🎙️</span><h3>Top Modes</h3></div></div>' + modesHtml + '</div></div>' +
         '<div class="operator-profile-section"><div class="operator-profile-section-title"><div><span>🗺️</span><h3>Recent Activations</h3></div></div>' + recentHtml + '</div>';
 
+      try {
+        const { data: fccRecord } = await supabaseClient.rpc("cpw_operator_fcc_record", {
+          p_callsign: call
+        });
+
+        if (fccRecord) {
+          const fccSection = document.createElement("div");
+          fccSection.className = "operator-profile-section operator-fcc-section";
+          fccSection.innerHTML =
+            '<div class="operator-profile-section-title"><div><span>📋</span><h3>FCC Public Record</h3></div><span class="verified-hams-only">Verified hams only</span></div>' +
+            '<div class="operator-fcc-grid">' +
+              '<div><span>Licensee</span><strong>' + escapeHTML(fccRecord.licensee_name || "—") + '</strong></div>' +
+              '<div><span>Callsign</span><strong>' + escapeHTML(fccRecord.callsign || call) + '</strong></div>' +
+              '<div><span>Class</span><strong>' + escapeHTML(fccRecord.license_class || "—") + '</strong></div>' +
+              '<div><span>Expiration</span><strong>' + escapeHTML(fccRecord.license_expiration || "—") + '</strong></div>' +
+              '<div class="operator-fcc-wide"><span>FCC Mailing Address</span><strong>' +
+                escapeHTML([fccRecord.street_address, fccRecord.city, fccRecord.state, fccRecord.zip]
+                  .filter(Boolean).join(", ") || "—") +
+              '</strong></div>' +
+              '<div><span>Grid</span><strong>' + escapeHTML(fccRecord.grid || "—") + '</strong></div>' +
+              '<div><span>Country</span><strong>' + escapeHTML(fccRecord.country || "—") + '</strong></div>' +
+            '</div>' +
+            '<p class="operator-fcc-note">This section comes from the FCC public license record and is shown inside CPW only to signed-in operators with a verified amateur license.</p>';
+          operatorProfileContent.appendChild(fccSection);
+        }
+      } catch (fccError) {
+        console.warn("FCC record is not available for this viewer:", fccError);
+      }
+
       operatorProfileContent.querySelectorAll("[data-panel-link]").forEach((link) => {
         link.addEventListener("click", (event) => {
           event.preventDefault();
@@ -4466,10 +4495,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     accountInfoPanel.style.display = "block";
     accountInfoHeading.textContent = "Update Account Information";
     accountInfoNote.textContent =
-      "Update your basic account information below. Your email address is tied to your login.";
+      "Your callsign is your CPW screen name. FCC identity fields are synchronized from the FCC record; email remains private login information.";
     signUpButton.style.display = "none";
     signInButton.style.display = "none";
-    saveBasicInfoButton.style.display = "inline-block";
+    saveBasicInfoButton.style.display = "none";
     signOutButton.style.display = "inline-block";
     cancelCreateAccountButton.style.display = "none";
     accountPasswordField.style.display = "none";
@@ -4484,11 +4513,29 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       headerCreateAccountButton.style.display = "none";
     }
 
-    const { data: operator } = await supabaseClient
+    let { data: operator } = await supabaseClient
       .from("operators")
-      .select("callsign,callsign_verified,license_class,license_expiration,is_admin,profile_bio,profile_state,profile_grid,profile_avatar_url,profile_qrz_url,profile_public")
+      .select("callsign,callsign_verified,license_class,license_expiration,is_admin,profile_bio,profile_state,profile_grid,profile_avatar_url,profile_qrz_url,profile_public,fcc_record_refreshed_at")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
+
+    const metadataCallsign = String(session.user.user_metadata?.callsign || "").trim().toUpperCase();
+    const syncCallsign = operator?.callsign || metadataCallsign;
+
+    if (syncCallsign && (!operator?.callsign_verified || !operator?.fcc_record_refreshed_at)) {
+      try {
+        await syncSignedInFccRecord(session, syncCallsign);
+        const refreshed = await supabaseClient
+          .from("operators")
+          .select("callsign,callsign_verified,license_class,license_expiration,is_admin,profile_bio,profile_state,profile_grid,profile_avatar_url,profile_qrz_url,profile_public,fcc_record_refreshed_at")
+          .eq("auth_user_id", session.user.id)
+          .maybeSingle();
+        operator = refreshed.data || operator;
+        await loadBasicAccountProfile(session);
+      } catch (fccSyncError) {
+        console.warn("FCC account sync deferred:", fccSyncError);
+      }
+    }
 
     updateActivationRequirementDisplay(operator);
     currentUserIsAdmin = Boolean(operator?.is_admin);
@@ -4520,7 +4567,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       profilePublic.checked = operator.profile_public !== false;
 
       accountStatus.textContent =
-        `Signed in as ${session.user.email}. Verified callsign: ${operator.callsign}${operator.license_class ? ` • ${operator.license_class} class` : ""}.`;
+        `Signed in as ${operator.callsign}${operator.license_class ? ` • ${operator.license_class} class` : ""}. Email: ${session.user.email}.`;
     } else {
       profileEditor.style.display = "none";
       accountStatus.textContent =
