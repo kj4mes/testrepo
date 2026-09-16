@@ -348,13 +348,6 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       panel.classList.toggle("active-panel", panel === target);
     });
 
-    if (window.location.hash === "#map") {
-    ensureNearbyMap(43.0, -84.8, 7);
-    if (mapStatus) {
-      mapStatus.textContent = "Search an area above or use your current location.";
-    }
-  }
-
   panelLinks.forEach((link) => {
       link.classList.toggle("active", link.dataset.panelLink === target.id);
     });
@@ -372,13 +365,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     if (target.id === "map") {
-      if (!nearbyMap) {
-        ensureNearbyMap(43.0, -84.8, 7);
-        if (mapStatus && !mapStatus.textContent) {
-          mapStatus.textContent = "Search an area above or use your current location.";
-        }
+      loadInitialMapDiscovery();
+      if (nearbyMap) {
+        setTimeout(() => nearbyMap.invalidateSize(), 100);
       }
-      setTimeout(() => nearbyMap.invalidateSize(), 100);
     } else if (target.id === "parks" && nearbyMap) {
       setTimeout(() => nearbyMap.invalidateSize(), 100);
     }
@@ -686,6 +676,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   let nearbyMap = null;
   let nearbyLayer = null;
   let lastNearbySearch = null;
+  let initialMapDiscoveryStarted = false;
 
   function activationMarkerLevel(count) {
     const value = Math.max(0, Number(count || 0));
@@ -793,6 +784,90 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     }
 
     setTimeout(() => nearbyMap.invalidateSize(), 100);
+  }
+
+  async function getApproximateVisitorLocation() {
+    try {
+      const response = await fetch("/api/visitor-location", {
+        cache: "no-store"
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const lat = Number(data?.latitude);
+      const lon = Number(data?.longitude);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+      return {
+        lat,
+        lon,
+        label: data?.city && data?.region
+          ? `${data.city}, ${data.region}`
+          : (data?.city || data?.postal_code || "your area"),
+        approximate: true
+      };
+    } catch (error) {
+      console.warn("Approximate visitor location unavailable:", error);
+      return null;
+    }
+  }
+
+  async function loadInitialMapDiscovery() {
+    if (initialMapDiscoveryStarted) return;
+    initialMapDiscoveryStarted = true;
+
+    if (mapStatus) {
+      mapStatus.textContent = "Finding parks near you…";
+    }
+
+    const useApproximateLocation = async () => {
+      const approximate = await getApproximateVisitorLocation();
+
+      if (approximate) {
+        if (mapStatus) {
+          mapStatus.textContent =
+            `Showing parks near ${approximate.label} based on your approximate area.`;
+        }
+        await renderNearbyParks(
+          approximate.lat,
+          approximate.lon,
+          approximate.label
+        );
+        return true;
+      }
+
+      if (mapStatus) {
+        mapStatus.textContent =
+          "Pan the map or search a city, ZIP, county, or park area.";
+      }
+      ensureNearbyMap(43.0, -84.8, 7);
+      return false;
+    };
+
+    if (!navigator.geolocation) {
+      await useApproximateLocation();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await renderNearbyParks(
+          position.coords.latitude,
+          position.coords.longitude,
+          "your current location"
+        );
+      },
+      async () => {
+        await useApproximateLocation();
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 7000,
+        maximumAge: 300000
+      }
+    );
   }
 
   function findNearbyParks() {
