@@ -1,4 +1,70 @@
 export default async function handler(req, res) {
+  if (String(req.query.location_helper || "") === "1") {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City Park Waves Location Helper</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#eef7fb;color:#17324d}
+main{max-width:680px;margin:0 auto;padding:36px 18px}
+.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 10px 30px rgba(23,50,77,.12);text-align:center}
+button{font-size:18px;font-weight:700;padding:14px 20px;border:0;border-radius:12px;background:#0f766e;color:#fff}
+p{line-height:1.45}
+</style>
+</head>
+<body>
+<main><div class="card">
+<h1>Finding Your Location</h1>
+<p id="status">City Park Waves is using its alternate location helper.</p>
+<button id="goButton" type="button">Continue</button>
+</div></main>
+<script>
+const status=document.getElementById("status");
+const button=document.getElementById("goButton");
+function finish(lat,lon){
+  const url=new URL("https://cityparkwaves.org/");
+  url.searchParams.set("cpw_lat",String(lat));
+  url.searchParams.set("cpw_lon",String(lon));
+  url.searchParams.set("cpw_location_source","helper");
+  url.hash="map";
+  location.replace(url.toString());
+}
+function fail(){
+  const url=new URL("https://cityparkwaves.org/");
+  url.searchParams.set("cpw_location_error","1");
+  url.hash="map";
+  location.replace(url.toString());
+}
+function locate(){
+  if(!navigator.geolocation){
+    status.textContent="Location is not available in this browser.";
+    setTimeout(fail,1200);
+    return;
+  }
+  button.disabled=true;
+  status.textContent="Requesting your current location…";
+  navigator.geolocation.getCurrentPosition(
+    p=>finish(p.coords.latitude,p.coords.longitude),
+    e=>{
+      console.error(e);
+      status.textContent="The alternate location helper could not get your location.";
+      button.disabled=false;
+      button.textContent="Try Again";
+    },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+  );
+}
+button.addEventListener("click",locate);
+locate();
+</script>
+</body>
+</html>`);
+  }
+
   if (String(req.query.location_test || "") === "1") {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
