@@ -144,22 +144,35 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
       parkDetailStatus.textContent = "";
 
+      const amenities = Array.isArray(park.amenities) ? park.amenities : [];
+      const verifiedDate = park.data_verified_at ? parkDetailDate(park.data_verified_at) : null;
+
       parkDetailContent.innerHTML = `
         <div class="park-detail-hero">
+          ${park.photo_url ? `
+            <div class="park-detail-photo-wrap">
+              <img class="park-detail-photo" src="${escapeHTML(park.photo_url)}" alt="${escapeHTML(park.name)}">
+            </div>` : `
+            <div class="park-detail-photo-placeholder" aria-hidden="true">🌳📡</div>`
+          }
+
           <div class="park-detail-ref">${escapeHTML(park.reference_code)}</div>
           <h2 class="park-detail-title">${escapeHTML(park.name)}</h2>
           <div class="park-detail-location">📍 ${escapeHTML(location)}</div>
+
+          ${park.managing_body ? `
+            <div class="park-detail-manager">Managed by ${escapeHTML(park.managing_body)}</div>` : ""}
 
           <div class="park-detail-actions">
             <a class="primary"
               href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}"
               target="_blank"
-              rel="noopener noreferrer">Open in Google Maps</a>
+              rel="noopener noreferrer">Directions</a>
             ${park.website_url ? `
               <a class="secondary"
                 href="${escapeHTML(park.website_url)}"
                 target="_blank"
-                rel="noopener noreferrer">Park Website</a>` : ""}
+                rel="noopener noreferrer">Official Park Website</a>` : ""}
           </div>
         </div>
 
@@ -178,13 +191,57 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
           </div>
         </div>
 
-        <div class="park-detail-card">
-          <h3>Park Information</h3>
-          ${park.park_type ? `<p><strong>Type:</strong> ${escapeHTML(park.park_type)}</p>` : ""}
-          ${park.county ? `<p><strong>County:</strong> ${escapeHTML(park.county)}</p>` : ""}
-          ${park.address ? `<p><strong>Address:</strong> ${escapeHTML(park.address)}</p>` : ""}
-          ${park.description ? `<p>${escapeHTML(park.description)}</p>` : ""}
-          ${park.source_name ? `<p><strong>Data source:</strong> ${escapeHTML(park.source_name)}</p>` : ""}
+        <div class="park-detail-card park-overview-card">
+          <div class="park-card-heading-row">
+            <h3>Park Overview</h3>
+            ${park.official_source_url ? `
+              <span class="park-source-badge">Official source${verifiedDate ? ` • checked ${escapeHTML(verifiedDate)}` : ""}</span>` : ""}
+          </div>
+
+          ${park.description ? `<p class="park-detail-description">${escapeHTML(park.description)}</p>` : ""}
+
+          <div class="park-detail-facts">
+            ${park.address ? `
+              <div class="park-detail-fact">
+                <span>Address</span>
+                <strong>${escapeHTML(park.address)}</strong>
+              </div>` : ""}
+            ${park.hours_text ? `
+              <div class="park-detail-fact">
+                <span>Hours</span>
+                <strong>${escapeHTML(park.hours_text)}</strong>
+              </div>` : ""}
+            ${park.managing_body ? `
+              <div class="park-detail-fact">
+                <span>Managing body</span>
+                <strong>${escapeHTML(park.managing_body)}</strong>
+              </div>` : ""}
+            ${park.county ? `
+              <div class="park-detail-fact">
+                <span>County</span>
+                <strong>${escapeHTML(park.county)}</strong>
+              </div>` : ""}
+          </div>
+
+          ${amenities.length ? `
+            <div class="park-amenities-section">
+              <h4>Amenities</h4>
+              <div class="park-amenity-chips">
+                ${amenities.map((amenity) => `<span class="park-amenity-chip">${escapeHTML(amenity)}</span>`).join("")}
+              </div>
+            </div>` : ""}
+
+          ${park.accessibility_notes ? `
+            <div class="park-accessibility-note">
+              <strong>Accessibility</strong>
+              <span>${escapeHTML(park.accessibility_notes)}</span>
+            </div>` : ""}
+
+          <div class="park-detail-source-row">
+            ${park.official_source_url ? `
+              <a href="${escapeHTML(park.official_source_url)}" target="_blank" rel="noopener noreferrer">View official source</a>` : ""}
+            ${park.source_name ? `<span>Base park record: ${escapeHTML(park.source_name)}</span>` : ""}
+          </div>
         </div>
 
         <div class="park-detail-card">
