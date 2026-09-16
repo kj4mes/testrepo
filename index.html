@@ -10,7 +10,7 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   >
 
-    <link rel="stylesheet" href="/css/site.css?v=20260915-2255">
+    <link rel="stylesheet" href="/css/site.css?v=20260915-2310">
 
 </head>
 
@@ -40,7 +40,6 @@
   <nav class="top-tabs" aria-label="Primary navigation">
     <a href="#home" data-panel-link="home">Home</a>
     <a href="#map" data-panel-link="map">Map</a>
-    <a href="#parks" data-panel-link="parks">Find Parks</a>
     <a href="#activity" data-panel-link="activity">Activity</a>
     <a href="#hunters" data-panel-link="hunters">Hunters</a>
     <a href="#dashboard" data-panel-link="dashboard">Dashboard</a>
@@ -66,7 +65,6 @@
     <nav id="menuPanel" class="menu-panel" aria-label="More navigation">
       <a href="#home" data-panel-link="home">Home</a>
       <a href="#map" data-panel-link="map">Map</a>
-      <a href="#parks" data-panel-link="parks">Find Parks</a>
       <a href="#activity" data-panel-link="activity">Recent Activity & Leaderboards</a>
       <a href="#hunters" data-panel-link="hunters">Hunter Stats</a>
       <a href="#dashboard" data-panel-link="dashboard">Operator Dashboard</a>
@@ -97,7 +95,7 @@
         </p>
 
         <div class="hero-actions">
-          <a class="button primary" href="#parks" data-panel-link="parks">📍 Find a Park</a>
+          <a class="button primary" href="#map" data-panel-link="map">📍 Explore Parks</a>
           <a class="button secondary" href="#dashboard" data-panel-link="dashboard">📡 Operator Dashboard</a>
         </div>
       </div>
@@ -119,9 +117,9 @@
     <div class="home-actions">
       <article class="home-action-card green">
         <div class="home-action-icon">📍</div>
-        <h3>Find Parks</h3>
-        <p>Search near you or explore another city, ZIP code, or county.</p>
-        <a class="home-card-link" href="#parks" data-panel-link="parks">Search Parks →</a>
+        <h3>Explore Parks</h3>
+        <p>Open the live map to see nearby parks, pan to explore, or switch to list view.</p>
+        <a class="home-card-link" href="#map" data-panel-link="map">Open Park Map →</a>
       </article>
 
       <article class="home-action-card blue">
@@ -205,6 +203,16 @@
       <button id="mapViewButton" class="active" type="button">Map</button>
       <button id="mapListButton" type="button">List</button>
     </div>
+
+    <div class="map-quality-filter">
+      <label for="parkQualityFilter">Show</label>
+      <select id="parkQualityFilter">
+        <option value="all">All parks</option>
+        <option value="documented">Well documented</option>
+        <option value="media">Website / photo</option>
+        <option value="activated">Activated parks</option>
+      </select>
+    </div>
   </div>
 
   <div id="mapStatus" class="map-discovery-status">Search a city, ZIP, county, or park area to get started.</div>
@@ -262,19 +270,6 @@
       <button id="nearMeButton">Use My Current Location</button>
     </div>
 
-    <div style="margin-top:16px;text-align:left;">
-      <label for="parkQualityFilter" style="font-weight:800;">Park quality filter</label>
-      <select id="parkQualityFilter" style="width:100%;margin-top:7px;padding:12px;border:1px solid #cbd9df;border-radius:10px;background:white;font-size:15px;">
-        <option value="all">All valid parks</option>
-        <option value="documented">Well documented parks</option>
-        <option value="media">Has website or photo</option>
-        <option value="activated">Previously activated</option>
-      </select>
-      <div style="font-size:13px;color:#667987;margin-top:6px;">
-        “Well documented” means the park has at least one extra confidence signal: website, photo, address, description, or prior activation.
-      </div>
-    </div>
-
     <div id="status" style="margin-top:14px;"></div>
     <div id="results"></div>
 
@@ -284,7 +279,7 @@
 
 <section class="section app-panel" id="park-detail">
   <div class="park-detail-wrap">
-    <button id="parkDetailBackButton" class="park-detail-button">← Back to Park Search</button>
+    <button id="parkDetailBackButton" class="park-detail-button">← Back to Map</button>
     <div id="parkDetailStatus" style="margin-top:18px;"></div>
     <div id="parkDetailContent"></div>
   </div>
@@ -1237,7 +1232,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/js/app.js?v=20260915-2235"></script>
+  <script src="/js/app.js?v=20260915-2310"></script>
 
 
 </body>
