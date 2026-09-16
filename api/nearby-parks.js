@@ -18,6 +18,62 @@ function distanceMiles(lat1, lon1, lat2, lon2) {
 }
 
 export default async function handler(req, res) {
+  const south = Number(req.query.south);
+  const west = Number(req.query.west);
+  const north = Number(req.query.north);
+  const east = Number(req.query.east);
+  const hasBounds = [south, west, north, east].every(Number.isFinite);
+
+  if (hasBounds) {
+    const limit = Math.min(Math.max(Number(req.query.limit || 250), 1), 500);
+
+    if (south >= north || west >= east) {
+      return res.status(400).json({ error: "Invalid map bounds." });
+    }
+
+    try {
+      const url =
+        SUPABASE_URL +
+        "/rest/v1/parks" +
+        "?select=id,reference_code,name,city,state,zip_code,park_type,latitude,longitude,source_name,website_url,photo_url,address,description,activations(count)" +
+        "&is_active=eq.true" +
+        "&latitude=not.is.null" +
+        "&longitude=not.is.null" +
+        "&latitude=gte." + encodeURIComponent(south) +
+        "&latitude=lte." + encodeURIComponent(north) +
+        "&longitude=gte." + encodeURIComponent(west) +
+        "&longitude=lte." + encodeURIComponent(east) +
+        "&limit=" + encodeURIComponent(limit);
+
+      const response = await fetch(url, {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: "Bearer " + SUPABASE_KEY
+        }
+      });
+
+      if (!response.ok) {
+        const details = await response.text();
+        return res.status(502).json({
+          error: "Unable to load parks in this map area.",
+          details: details.slice(0, 400)
+        });
+      }
+
+      const parks = await response.json();
+
+      return res.status(200).json(
+        parks.map((park) => ({
+          ...park,
+          activation_count: Number(park.activations?.[0]?.count || 0)
+        }))
+      );
+    } catch (error) {
+      console.error("Map bounds park search failed:", error);
+      return res.status(500).json({ error: "Unable to load parks in this map area." });
+    }
+  }
+
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
   const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
