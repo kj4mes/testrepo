@@ -42,24 +42,28 @@ function fail(){
 function locate(){
   if(!navigator.geolocation){
     status.textContent="Location is not available in this browser.";
-    setTimeout(fail,1200);
+    button.disabled=true;
     return;
   }
+
   button.disabled=true;
   status.textContent="Requesting your current location…";
+
   navigator.geolocation.getCurrentPosition(
     p=>finish(p.coords.latitude,p.coords.longitude),
     e=>{
       console.error(e);
-      status.textContent="The alternate location helper could not get your location.";
+      status.textContent="Location was not granted here. Tap Try Again after allowing location for this Vercel page.";
       button.disabled=false;
       button.textContent="Try Again";
     },
-    {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+    {enableHighAccuracy:true,timeout:20000,maximumAge:60000}
   );
 }
+
+button.textContent="Allow Location & Return";
+status.textContent="Tap the button below to allow location on the alternate helper, then you will return to City Park Waves.";
 button.addEventListener("click",locate);
-locate();
 </script>
 </body>
 </html>`);
