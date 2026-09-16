@@ -4681,7 +4681,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     const password = loginPassword.value;
 
     if (!identifier || !password) {
-      loginStatus.textContent = "Enter your username or email address and password.";
+      loginStatus.textContent = "Enter your callsign or email address and password.";
       return;
     }
 
@@ -4696,7 +4696,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
         });
 
       if (resolveError || !resolvedEmail) {
-        loginStatus.textContent = "Invalid username/email or password.";
+        loginStatus.textContent = "Invalid callsign/email or password.";
         return;
       }
 
@@ -4710,7 +4710,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       });
 
     if (error || !signInData?.session?.user) {
-      loginStatus.textContent = "Invalid username/email or password.";
+      loginStatus.textContent = "Invalid callsign/email or password.";
       return;
     }
 
