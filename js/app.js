@@ -786,58 +786,13 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     setTimeout(() => nearbyMap.invalidateSize(), 100);
   }
 
-  async function getGeolocationPermissionState() {
-    try {
-      if (!navigator.permissions?.query) return "unavailable";
-      const result = await navigator.permissions.query({ name: "geolocation" });
-      return result?.state || "unknown";
-    } catch {
-      return "unavailable";
-    }
-  }
-
-  function formatLocationDiagnostics(diag) {
-    return [
-      `Secure context: ${diag.secureContext ? "yes" : "no"}`,
-      `Geolocation API: ${diag.geolocationAvailable ? "yes" : "no"}`,
-      `Permission state: ${diag.permissionState}`,
-      `Policy allows geolocation: ${diag.policyAllowsGeolocation}`,
-      `High-accuracy result: ${diag.highAccuracyResult}`,
-      `Fallback result: ${diag.fallbackResult}`,
-      `Error code: ${diag.errorCode ?? "none"}`
-    ].join(" • ");
-  }
-
   function findNearbyParks() {
     statusBox.textContent = "";
     resultsBox.innerHTML = "";
 
-    const policyAllowsGeolocation = (() => {
-      try {
-        if (document.permissionsPolicy?.allowsFeature) {
-          return document.permissionsPolicy.allowsFeature("geolocation");
-        }
-        if (document.featurePolicy?.allowsFeature) {
-          return document.featurePolicy.allowsFeature("geolocation");
-        }
-      } catch {}
-      return "unavailable";
-    })();
-
-    const diagnostics = {
-      secureContext: window.isSecureContext,
-      geolocationAvailable: Boolean(navigator.geolocation),
-      permissionState: "not checked",
-      policyAllowsGeolocation,
-      highAccuracyResult: "not attempted",
-      fallbackResult: "not attempted",
-      errorCode: null
-    };
-
     if (!navigator.geolocation) {
       const message =
-        "Location services are not supported by this browser. " +
-        formatLocationDiagnostics(diagnostics);
+        "Your browser does not support location access. Search by ZIP, city, or county instead.";
       statusBox.textContent = message;
       if (mapStatus) mapStatus.textContent = message;
       return;
@@ -845,99 +800,44 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     nearMeButton.disabled = true;
     if (mapNearMeButton) mapNearMeButton.disabled = true;
-    statusBox.textContent = "Getting your location...";
-    if (mapStatus) mapStatus.textContent = "Getting your location...";
 
-    const finishLocationAttempt = () => {
-      nearMeButton.disabled = false;
-      if (mapNearMeButton) mapNearMeButton.disabled = false;
-    };
-
-    const handleLocationSuccess = async (position, source = "high accuracy") => {
-      if (source === "high accuracy") diagnostics.highAccuracyResult = "success";
-      if (source === "fallback") diagnostics.fallbackResult = "success";
-
-      try {
-        await renderNearbyParks(
-          position.coords.latitude,
-          position.coords.longitude,
-          "your current location"
-        );
-      } finally {
-        finishLocationAttempt();
-      }
-    };
-
-    const handleFinalLocationError = async (error) => {
-      console.error(error);
-
-      diagnostics.errorCode = error?.code ?? null;
-      diagnostics.fallbackResult = "failed";
-      diagnostics.permissionState = await getGeolocationPermissionState();
-
-      let message = "Location unavailable — search an area above to explore the map.";
-
-      if (
-        error?.code === 1 &&
-        window.location.hostname === "cityparkwaves.org" &&
-        new URL(window.location.href).searchParams.get("cpw_location_error") !== "1"
-      ) {
-        if (mapStatus) {
-          mapStatus.textContent = "Opening alternate location access…";
-        }
-        window.location.href =
-          "https://testrepo-two-eta.vercel.app/api/verify-callsign?location_helper=1";
-        return;
-      }
-
-      if (error?.code === 1) {
-        message = "The browser denied the location request.";
-      } else if (error?.code === 2) {
-        message = "Your device could not determine its location.";
-      } else if (error?.code === 3) {
-        message = "Location lookup timed out.";
-      }
-
-      const diagnosticText = formatLocationDiagnostics(diagnostics);
-      statusBox.textContent = `${message} ${diagnosticText}`;
-      if (mapStatus) mapStatus.textContent = `${message} ${diagnosticText}`;
-
-      if (!nearbyMap) {
-        ensureNearbyMap(43.0, -84.8, 7);
-      }
-
-      finishLocationAttempt();
-    };
+    const message = "Getting your current location...";
+    statusBox.textContent = message;
+    if (mapStatus) mapStatus.textContent = message;
 
     navigator.geolocation.getCurrentPosition(
-      (position) => handleLocationSuccess(position, "high accuracy"),
-      (firstError) => {
-        diagnostics.highAccuracyResult = "failed";
-        diagnostics.errorCode = firstError?.code ?? null;
+      async (position) => {
+        try {
+          await renderNearbyParks(
+            position.coords.latitude,
+            position.coords.longitude,
+            "your current location"
+          );
+        } finally {
+          nearMeButton.disabled = false;
+          if (mapNearMeButton) mapNearMeButton.disabled = false;
+        }
+      },
+      (error) => {
+        console.warn("Location lookup failed:", error);
 
-        console.warn(
-          "High-accuracy location attempt failed; retrying with standard accuracy.",
-          firstError
-        );
+        const fallbackMessage =
+          "Current location is unavailable on this browser. Search by ZIP, city, or county instead.";
 
-        if (mapStatus) {
-          mapStatus.textContent = "Trying a second location method...";
+        statusBox.textContent = fallbackMessage;
+        if (mapStatus) mapStatus.textContent = fallbackMessage;
+
+        if (!nearbyMap) {
+          ensureNearbyMap(43.0, -84.8, 7);
         }
 
-        navigator.geolocation.getCurrentPosition(
-          (position) => handleLocationSuccess(position, "fallback"),
-          handleFinalLocationError,
-          {
-            enableHighAccuracy: false,
-            timeout: 20000,
-            maximumAge: 300000
-          }
-        );
+        nearMeButton.disabled = false;
+        if (mapNearMeButton) mapNearMeButton.disabled = false;
       },
       {
         enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 60000
+        timeout: 15000,
+        maximumAge: 120000
       }
     );
   }
@@ -4367,35 +4267,8 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const initialParams = new URLSearchParams(window.location.search);
   const initialParkReference = initialParams.get("park");
   const initialOperatorCall = initialParams.get("operator");
-  const helperLat = Number(initialParams.get("cpw_lat"));
-  const helperLon = Number(initialParams.get("cpw_lon"));
-  const helperReturned =
-    initialParams.get("cpw_location_source") === "helper" &&
-    Number.isFinite(helperLat) &&
-    Number.isFinite(helperLon);
-  const helperFailed = initialParams.get("cpw_location_error") === "1";
 
-  if (helperReturned) {
-    showPanel("map", false);
-    renderNearbyParks(helperLat, helperLon, "your current location");
-
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("cpw_lat");
-    cleanUrl.searchParams.delete("cpw_lon");
-    cleanUrl.searchParams.delete("cpw_location_source");
-    cleanUrl.hash = "map";
-    history.replaceState({ panel: "map" }, "", cleanUrl);
-  } else if (helperFailed) {
-    showPanel("map", false);
-    if (mapStatus) {
-      mapStatus.textContent =
-        "Alternate location access was unable to get your location. Search by ZIP/city instead.";
-    }
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("cpw_location_error");
-    cleanUrl.hash = "map";
-    history.replaceState({ panel: "map" }, "", cleanUrl);
-  } else if (initialOperatorCall) {
+  if (initialOperatorCall) {
     openOperatorProfile(initialOperatorCall);
   } else if (initialParkReference) {
     openParkDetails(initialParkReference);
