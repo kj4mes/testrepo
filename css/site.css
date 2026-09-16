@@ -1396,41 +1396,42 @@
 }
 
 .park-activation-marker {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 3px solid #ffffff;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(23, 50, 77, 0.28);
+    0 2px 5px rgba(0, 0, 0, 0.38),
+    0 0 0 2px rgba(23, 50, 77, 0.48),
+    0 0 10px rgba(255, 255, 255, 0.55);
 }
 
 .park-activation-none {
-  background: #9ca3af;
+  background: #475569;
 }
 
 .park-activation-low {
-  background: #86efac;
+  background: #22d36b;
 }
 
 .park-activation-moderate {
-  background: #22c55e;
+  background: #00a84f;
 }
 
 .park-activation-active {
-  background: #facc15;
+  background: #ffd400;
 }
 
 .park-activation-busy {
-  background: #fb923c;
+  background: #ff8a00;
 }
 
 .park-activation-hot {
-  background: #ef4444;
+  background: #ff2f2f;
 }
 
 .park-activation-century {
-  background: #7c3aed;
+  background: #8b3dff;
 }
 
 .activation-map-legend {
@@ -1456,12 +1457,12 @@
 }
 
 .activation-map-legend-dot {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   border: 2px solid #ffffff;
-  box-shadow: 0 0 0 1px rgba(23, 50, 77, 0.22);
-  flex: 0 0 13px;
+  box-shadow: 0 0 0 2px rgba(23, 50, 77, 0.35);
+  flex: 0 0 15px;
 }
 
 
@@ -1474,7 +1475,7 @@
 }
 
 .park-identity-marker .park-activation-marker {
-  flex: 0 0 22px;
+  flex: 0 0 26px;
 }
 
 .park-identity-label {
