@@ -877,6 +877,19 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
       let message = "Location unavailable — search an area above to explore the map.";
 
+      if (
+        error?.code === 1 &&
+        window.location.hostname === "cityparkwaves.org" &&
+        new URL(window.location.href).searchParams.get("cpw_location_error") !== "1"
+      ) {
+        if (mapStatus) {
+          mapStatus.textContent = "Opening alternate location access…";
+        }
+        window.location.href =
+          "https://testrepo-two-eta.vercel.app/api/verify-callsign?location_helper=1";
+        return;
+      }
+
       if (error?.code === 1) {
         message = "The browser denied the location request.";
       } else if (error?.code === 2) {
@@ -4354,8 +4367,35 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const initialParams = new URLSearchParams(window.location.search);
   const initialParkReference = initialParams.get("park");
   const initialOperatorCall = initialParams.get("operator");
+  const helperLat = Number(initialParams.get("cpw_lat"));
+  const helperLon = Number(initialParams.get("cpw_lon"));
+  const helperReturned =
+    initialParams.get("cpw_location_source") === "helper" &&
+    Number.isFinite(helperLat) &&
+    Number.isFinite(helperLon);
+  const helperFailed = initialParams.get("cpw_location_error") === "1";
 
-  if (initialOperatorCall) {
+  if (helperReturned) {
+    showPanel("map", false);
+    renderNearbyParks(helperLat, helperLon, "your current location");
+
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("cpw_lat");
+    cleanUrl.searchParams.delete("cpw_lon");
+    cleanUrl.searchParams.delete("cpw_location_source");
+    cleanUrl.hash = "map";
+    history.replaceState({ panel: "map" }, "", cleanUrl);
+  } else if (helperFailed) {
+    showPanel("map", false);
+    if (mapStatus) {
+      mapStatus.textContent =
+        "Alternate location access was unable to get your location. Search by ZIP/city instead.";
+    }
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("cpw_location_error");
+    cleanUrl.hash = "map";
+    history.replaceState({ panel: "map" }, "", cleanUrl);
+  } else if (initialOperatorCall) {
     openOperatorProfile(initialOperatorCall);
   } else if (initialParkReference) {
     openParkDetails(initialParkReference);
