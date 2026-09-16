@@ -93,9 +93,7 @@ export default async function handler(req, res) {
         .filter(Boolean)
         .join(" ")
         .trim() || null,
-      street_address: record.addr1 || null,
       city: record.addr2 || null,
-      zip: record.zip || null,
       grid: record.grid || null,
       state: record.state || null,
       country: record.country || null,
