@@ -4119,3 +4119,116 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* FCC-backed account creation */
+.account-inline-verify {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-inline-verify .account-secondary-button {
+  white-space: nowrap;
+  align-self: stretch;
+}
+
+.account-fcc-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f4fafb;
+  border: 1px solid #dcebef;
+  color: #466274;
+  line-height: 1.45;
+}
+
+.account-fcc-preview strong {
+  color: #176247;
+}
+
+.account-fcc-preview span,
+.account-fcc-preview small {
+  display: block;
+}
+
+.account-fcc-data-field input[readonly],
+#accountUsername[readonly] {
+  background: #f5f8f9;
+  color: #425d6d;
+}
+
+.operator-fcc-section {
+  border: 1px solid #d7e7eb;
+  background: linear-gradient(180deg, #fbfdfe, #fff);
+}
+
+.verified-hams-only {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #e8f7f1;
+  color: #176247;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.operator-fcc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+
+.operator-fcc-grid > div {
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: #f6fafb;
+  border: 1px solid #e2ecef;
+}
+
+.operator-fcc-grid span,
+.operator-fcc-grid strong {
+  display: block;
+}
+
+.operator-fcc-grid span {
+  color: #718692;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 4px;
+}
+
+.operator-fcc-grid strong {
+  color: #17324d;
+  line-height: 1.45;
+}
+
+.operator-fcc-wide {
+  grid-column: 1 / -1;
+}
+
+.operator-fcc-note {
+  margin: 14px 0 0;
+  color: #6a808d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 650px) {
+  .account-inline-verify {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-fcc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-fcc-wide {
+    grid-column: auto;
+  }
+}
