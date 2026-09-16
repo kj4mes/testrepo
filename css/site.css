@@ -4014,3 +4014,78 @@
   font-size: 11px;
   border-top: 1px solid #e3ecef;
 }
+
+
+/* Park detail navigation and activation workflow */
+.park-detail-actions .park-plan-activation {
+  background: var(--cpw-teal);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(15,118,110,.18);
+}
+
+.park-detail-stats {
+  grid-template-columns: repeat(4, minmax(0,1fr));
+}
+
+.park-detail-section-nav {
+  position: sticky;
+  top: 78px;
+  z-index: 500;
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 8px;
+  border: 1px solid var(--cpw-border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 7px 20px rgba(23,50,77,.08);
+  backdrop-filter: blur(8px);
+}
+
+.park-detail-section-nav button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  background: #eff6f8;
+  color: #294b5f;
+  padding: 10px 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.park-detail-section-nav button:hover {
+  background: #e1f3f1;
+  color: var(--cpw-teal-dark);
+}
+
+#parkOverviewSection,
+#parkActivationsSection,
+#parkContactsSection {
+  scroll-margin-top: 145px;
+}
+
+.park-section-summary {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef5f7;
+  color: #637985;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .park-detail-stats {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+
+  .park-detail-section-nav {
+    top: 66px;
+  }
+
+  .park-detail-section-nav button {
+    padding: 9px 7px;
+    font-size: 13px;
+  }
+}
