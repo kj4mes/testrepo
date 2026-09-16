@@ -501,7 +501,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     accountInfoPanel.style.display = "block";
     accountInfoHeading.textContent = "Create Account";
     accountInfoNote.textContent =
-      "Complete the information below to create your City Park Waves account.";
+      "Verify your FCC callsign, then enter your email address and password.";
     signUpButton.style.display = "inline-block";
     saveBasicInfoButton.style.display = "none";
     signOutButton.style.display = "none";
@@ -510,7 +510,18 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     accountEmail.readOnly = false;
     accountPassword.value = "";
     accountStatus.textContent = "";
-    setTimeout(() => accountUsername?.focus(), 50);
+    pendingSignupFcc = null;
+    if (accountCallsign) accountCallsign.value = "";
+    accountUsername.value = "";
+    accountCity.value = "";
+    accountState.value = "";
+    accountGrid.value = "";
+    accountAddress.value = "";
+    if (accountFccPreview) {
+      accountFccPreview.textContent =
+        "Enter your callsign and tap Verify. CPW will use the FCC record to set up your operator identity.";
+    }
+    setTimeout(() => accountCallsign?.focus(), 50);
   }
 
   function showLoginForm() {
@@ -581,6 +592,10 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   const accountInfoNote = document.getElementById("accountInfoNote");
   const accountPasswordField = document.getElementById("accountPasswordField");
   const accountUsername = document.getElementById("accountUsername");
+  const accountCallsign = document.getElementById("accountCallsign");
+  const accountVerifyCallsignButton = document.getElementById("accountVerifyCallsignButton");
+  const accountFccPreview = document.getElementById("accountFccPreview");
+  let pendingSignupFcc = null;
 
   openCreateAccountButton?.addEventListener("click", showCreateAccountForm);
   cancelCreateAccountButton?.addEventListener("click", showLoginForm);
@@ -3967,7 +3982,7 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
   function basicAccountValues() {
     return {
-      username: accountUsername.value.trim(),
+      username: accountUsername.value.trim().toUpperCase(),
       city: accountCity.value.trim(),
       state: accountState.value.trim().toUpperCase(),
       grid_square: accountGrid.value.trim(),
@@ -3976,15 +3991,82 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   }
 
   function validateBasicAccount(values) {
-    if (!/^[A-Za-z0-9_.-]{3,30}$/.test(values.username)) {
-      return "Username must be 3–30 characters using letters, numbers, dot, dash, or underscore.";
+    if (!/^[A-Z0-9]{3,6}$/.test(values.username)) {
+      return "Verify an active FCC amateur radio callsign first.";
     }
-    if (!values.city) return "Enter your city.";
-    if (!/^[A-Z]{2}$/.test(values.state)) return "Enter a two-letter state abbreviation.";
-    if (!values.grid_square) return "Enter your grid square.";
-    if (!values.street_address) return "Enter your street address.";
+    if (values.state && !/^[A-Z]{2}$/.test(values.state)) {
+      return "The FCC record returned an invalid state value.";
+    }
     return null;
   }
+
+  function normalizedFccExpiration(value) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (match) {
+      const [, month, day, year] = match;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+  }
+
+  async function verifySignupCallsign() {
+    const callsign = String(accountCallsign?.value || "").trim().toUpperCase();
+    if (accountCallsign) accountCallsign.value = callsign;
+    pendingSignupFcc = null;
+
+    if (!callsign) {
+      accountStatus.textContent = "Enter your FCC callsign.";
+      return;
+    }
+
+    accountStatus.textContent = "Checking FCC records...";
+    if (accountVerifyCallsignButton) accountVerifyCallsignButton.disabled = true;
+
+    try {
+      const response = await fetch(
+        `/api/verify-callsign?callsign=${encodeURIComponent(callsign)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data?.verified) {
+        accountStatus.textContent =
+          data?.error || `${callsign} could not be verified as an active FCC amateur radio callsign.`;
+        return;
+      }
+
+      pendingSignupFcc = data;
+      accountUsername.value = callsign;
+      accountCity.value = data.city || "";
+      accountState.value = String(data.state || "").toUpperCase();
+      accountGrid.value = data.grid || "";
+      accountAddress.value = "";
+
+      if (accountFccPreview) {
+        accountFccPreview.innerHTML =
+          '<strong>✓ ' + escapeHTML(callsign) + ' verified</strong>' +
+          (data.licensee_name ? '<span>' + escapeHTML(data.licensee_name) + '</span>' : '') +
+          '<span>' +
+            escapeHTML([data.service ? data.service + " class" : "", data.city, data.state]
+              .filter(Boolean).join(" • ")) +
+          '</span>' +
+          '<small>Your callsign will be your CPW screen name. Full FCC record details are synchronized after sign-in and are only available inside CPW to verified amateur accounts.</small>';
+      }
+
+      accountStatus.textContent = "Callsign verified. Enter your email and password to create the account.";
+    } catch (error) {
+      console.error(error);
+      accountStatus.textContent = "Unable to verify that callsign right now.";
+    } finally {
+      if (accountVerifyCallsignButton) accountVerifyCallsignButton.disabled = false;
+    }
+  }
+
+  accountVerifyCallsignButton?.addEventListener("click", verifySignupCallsign);
+  accountCallsign?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") verifySignupCallsign();
+  });
 
   async function saveBasicAccountProfile(userId, values) {
     const payload = {
@@ -4004,6 +4086,79 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
     if (error) throw error;
   }
 
+  async function syncSignedInFccRecord(session, callsign) {
+    if (!session?.access_token || !callsign) return null;
+
+    const response = await fetch(
+      `/api/fcc-profile?callsign=${encodeURIComponent(callsign)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      }
+    );
+
+    const fcc = await response.json();
+    if (!response.ok) {
+      throw new Error(fcc?.error || "Unable to synchronize the FCC record.");
+    }
+
+    const values = {
+      username: fcc.callsign,
+      city: fcc.city || "",
+      state: String(fcc.state || "").toUpperCase(),
+      grid_square: fcc.grid || "",
+      street_address: fcc.street_address || ""
+    };
+
+    await saveBasicAccountProfile(session.user.id, values);
+
+    const operatorPayload = {
+      auth_user_id: session.user.id,
+      callsign: fcc.callsign,
+      callsign_status: "active",
+      license_class: fcc.license_class || null,
+      license_expiration: normalizedFccExpiration(fcc.expiration),
+      callsign_verified: true,
+      callsign_verified_at: new Date().toISOString(),
+      verification_source: fcc.source || "HamDB / FCC ULS",
+      licensee_name: fcc.licensee_name || null,
+      fcc_street_address: fcc.street_address || null,
+      fcc_city: fcc.city || null,
+      fcc_state: fcc.state || null,
+      fcc_zip: fcc.zip || null,
+      fcc_country: fcc.country || null,
+      fcc_grid: fcc.grid || null,
+      fcc_record_refreshed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { error: operatorError } = await supabaseClient
+      .from("operators")
+      .upsert(operatorPayload, { onConflict: "auth_user_id" });
+
+    if (operatorError) throw operatorError;
+
+    await supabaseClient.auth.updateUser({
+      data: {
+        callsign: fcc.callsign,
+        username: fcc.callsign,
+        city: values.city,
+        state: values.state,
+        grid_square: values.grid_square
+      }
+    });
+
+    accountUsername.value = fcc.callsign;
+    if (accountCallsign) accountCallsign.value = fcc.callsign;
+    accountCity.value = values.city;
+    accountState.value = values.state;
+    accountGrid.value = values.grid_square;
+    accountAddress.value = values.street_address;
+
+    return fcc;
+  }
+
   async function loadBasicAccountProfile(session) {
     if (!session?.user) return;
 
@@ -4020,25 +4175,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     const meta = session.user.user_metadata || {};
     accountEmail.value = session.user.email || "";
-    accountUsername.value = profile?.username || meta.username || "";
+    accountUsername.value = profile?.username || meta.callsign || meta.username || "";
+    if (accountCallsign) accountCallsign.value = meta.callsign || profile?.username || "";
     accountCity.value = profile?.city || meta.city || "";
     accountState.value = profile?.state || meta.state || "";
     accountGrid.value = profile?.grid_square || meta.grid_square || "";
-    accountAddress.value = profile?.street_address || meta.street_address || "";
-
-    if (!profile?.username && meta.username) {
-      try {
-        await saveBasicAccountProfile(session.user.id, {
-          username: meta.username,
-          city: meta.city || "",
-          state: String(meta.state || "").toUpperCase(),
-          grid_square: meta.grid_square || "",
-          street_address: meta.street_address || ""
-        });
-      } catch (syncError) {
-        console.warn("Could not sync signup profile metadata:", syncError);
-      }
-    }
+    accountAddress.value = profile?.street_address || "";
   }
 
   function formatAdminUserDate(value) {
@@ -4425,13 +4567,20 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
   async function createAccount() {
     const email = accountEmail.value.trim();
     const password = accountPassword.value;
-    const values = basicAccountValues();
-    const validationError = validateBasicAccount(values);
+    const callsign = String(accountCallsign?.value || "").trim().toUpperCase();
 
-    if (validationError) {
-      accountStatus.textContent = validationError;
+    if (!pendingSignupFcc?.verified || pendingSignupFcc.callsign !== callsign) {
+      accountStatus.textContent = "Verify your active FCC callsign before creating the account.";
       return;
     }
+
+    const values = {
+      username: callsign,
+      city: pendingSignupFcc.city || "",
+      state: String(pendingSignupFcc.state || "").toUpperCase(),
+      grid_square: pendingSignupFcc.grid || "",
+      street_address: ""
+    };
 
     if (!email || password.length < 6) {
       accountStatus.textContent =
@@ -4447,11 +4596,12 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
       options: {
         emailRedirectTo: "https://cityparkwaves.org/#account",
         data: {
-          username: values.username,
+          callsign,
+          username: callsign,
           city: values.city,
           state: values.state,
           grid_square: values.grid_square,
-          street_address: values.street_address
+          license_class: pendingSignupFcc.service || null
         }
       }
     });
@@ -4463,17 +4613,17 @@ const SUPABASE_URL = "https://ppxvqtntzncsyttfegdd.supabase.co";
 
     if (data.session?.user) {
       try {
-        await saveBasicAccountProfile(data.session.user.id, values);
+        await syncSignedInFccRecord(data.session, callsign);
       } catch (profileError) {
         console.error(profileError);
         accountStatus.textContent =
-          "Account created, but the basic profile could not be saved: " + profileError.message;
+          "Account created, but the FCC profile could not be synchronized yet. Sign in again to retry.";
         return;
       }
-      accountStatus.textContent = "Account created and signed in.";
+      accountStatus.textContent = `Account created. Welcome, ${callsign}.`;
     } else {
       accountStatus.textContent =
-        "Account created. Check your email for the confirmation link, then return here and sign in.";
+        "Account created. Check your email for the confirmation link. Your FCC operator profile will finish syncing when you sign in.";
     }
 
     await refreshAccountStatus();
