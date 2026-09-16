@@ -4089,3 +4089,33 @@
     font-size: 13px;
   }
 }
+
+
+/* Simplified homepage */
+.home-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.home-rules-link {
+  text-align: center;
+  margin-top: 14px;
+}
+
+.home-rules-link a {
+  color: #426176;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.home-rules-link a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .home-actions {
+    grid-template-columns: 1fr;
+  }
+}
