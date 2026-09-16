@@ -89,9 +89,13 @@ export default async function handler(req, res) {
       status,
       service: record.class || null,
       expiration: record.expires || null,
-      licensee_name: record.fname && record.name
-        ? `${record.fname} ${record.name}`.trim()
-        : (record.name || null),
+      licensee_name: [record.fname, record.mi, record.name, record.suffix]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || null,
+      street_address: record.addr1 || null,
+      city: record.addr2 || null,
+      zip: record.zip || null,
       grid: record.grid || null,
       state: record.state || null,
       country: record.country || null,
